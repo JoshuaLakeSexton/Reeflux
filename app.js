@@ -14,7 +14,7 @@ const toast = document.getElementById("toast");
 
 const AUDIO_STATE_KEY = "reefAudioState";
 const TARGET_VOLUME = 0.25;
-const FADE_DURATION = 1500;
+const FADE_DURATION = 100;
 
 /* =========================
    Toast
@@ -35,7 +35,7 @@ function fadeTo(target) {
   if (!audio) return;
   clearInterval(fadeInterval);
 
-  const stepTime = 50;
+  const stepTime = 10;
   const steps = FADE_DURATION / stepTime;
   const delta = (target - audio.volume) / steps;
 
