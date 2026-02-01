@@ -40,3 +40,6 @@ audioToggle.addEventListener("click", async () => {
 if (localStorage.getItem("reefAudio") === "on") {
   audioToggle.click();
 }
+const DRIFT_PASS_URL = https://buy.stripe.com/aFacN75Kj64hbSR3DL6wE00;
+const POOL_KEY_URL  = https://buy.stripe.com/eVq8wR4Gf1O14qp0rz6wE01;
+
