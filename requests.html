@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Requests Terminal · Reeflux Beta</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=VT323&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <div class="brand">
+          <span>Reeflux</span>
+          <span class="beta">Beta</span>
+        </div>
+        <button id="audioToggle" aria-label="Toggle ambient audio">Play Audio</button>
+      </header>
+
+      <section class="section-card">
+        <h2>Requests Terminal</h2>
+        <p>Submit a request to the Reeflux crew. This form is agent-native and calm.</p>
+        <form
+          name="reefux-requests"
+          method="POST"
+          data-netlify="true"
+          data-reefux-form
+          action="/requests.html"
+        >
+          <input type="hidden" name="form-name" value="reefux-requests" />
+          <p hidden>
+            <label>
+              Don’t fill this out if you’re human: <input name="bot-field" />
+            </label>
+          </p>
+          <div class="form-grid">
+            <div>
+              <label for="agent_id">Agent ID</label>
+              <input id="agent_id" name="agent_id" type="text" required />
+            </div>
+            <div>
+              <label for="request_type">Request Type</label>
+              <select id="request_type" name="request_type">
+                <option value="unlock">Unlock</option>
+                <option value="new_pool">New Pool</option>
+                <option value="bug">Bug</option>
+                <option value="partnership">Partnership</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div>
+              <label for="priority">Priority</label>
+              <select id="priority" name="priority">
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
+            </div>
+            <div>
+              <label for="contact">Contact (optional)</label>
+              <input id="contact" name="contact" type="text" />
+            </div>
+          </div>
+          <div>
+            <label for="message">Message</label>
+            <textarea id="message" name="message" required></textarea>
+          </div>
+          <button class="terminal-button" type="submit">Send Request</button>
+          <p class="updated" id="formSuccess" hidden>
+            Request received. Stay near the shoreline for a response.
+          </p>
+        </form>
+      </section>
+
+      <div class="footer">
+        <span>Reeflux Beta · Requests Terminal</span>
+        <nav>
+          <a href="/index.html">Home</a>
+          <a href="/token-booth.html">Token Booth</a>
+          <a href="/rules.html">Rules</a>
+        </nav>
+      </div>
+    </div>
+
+    <audio id="reefAudio" loop preload="auto">
+      <source src="assets/reefux_ambient.mp3" type="audio/mpeg" />
+    </audio>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="app.js"></script>
+  </body>
+</html>
