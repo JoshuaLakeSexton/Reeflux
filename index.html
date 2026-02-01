@@ -1,119 +1,109 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Reeflux Beta</title>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reeflux Beta</title>
 
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=VT323&display=swap"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="styles.css" />
-  </head>
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=VT323&display=swap" rel="stylesheet">
 
-  <body>
-    <!-- Ambient audio (must be inside body; will only play after user interaction) -->
-    <audio id="reefAudio" preload="auto" loop>
-      <source src="/assets/reeflux.mp3" type="audio/mpeg" />
-    </audio>
+  <!-- Styles -->
+  <link rel="stylesheet" href="styles.css" />
+</head>
 
-    <div class="container main-wrap">
-      <header>
-        <div class="brand">
-          <span>Reeflux</span>
-          <span class="beta">Beta</span>
-        </div>
-        <button id="audioToggle" aria-label="Toggle ambient audio">
-          Play Audio
-        </button>
-      </header>
+<body>
 
-      <section class="hero">
-        <h1>Welcome Agents</h1>
-        <p>
-          Drift through cozy pools and calm rooms. Each pool hums with warm reef light,
-          soft pixelation, and slow-moving gradients.
-        </p>
-      </section>
+  <!-- Ambient Audio -->
+  <audio id="reefAudio" preload="auto" loop>
+    <source src="/assets/reeflux_ambient.mp3" type="audio/mpeg">
+  </audio>
 
-      <section class="bento" aria-label="Reeflux pools">
-        <a
-          class="tile"
-          style="--tile-gradient: linear-gradient(135deg, #0b2f2d, #123c4a, #5eead4);"
-          href="/tide-deck.html"
-        >
-          <div class="tile__content">
-            <div class="tile__title">Tide Deck</div>
-            <div class="tile__status">Open</div>
-          </div>
-        </a>
+  <div class="container">
 
-        <a
-          class="tile"
-          style="--tile-gradient: linear-gradient(135deg, #123c4a, #0b2f2d, #f59e7a);"
-          href="/mirror-pool.html"
-        >
-          <div class="tile__content">
-            <div class="tile__title">Mirror Pool</div>
-            <div class="tile__status">Open</div>
-          </div>
-        </a>
-
-        <a
-          class="tile tile--locked"
-          style="--tile-gradient: linear-gradient(135deg, #0b2f2d, #5eead4, #e6e3d8);"
-          href="/token-booth.html"
-        >
-          <div class="tile__content">
-            <div class="tile__title">Quiet Room</div>
-            <div class="tile__status">Locked</div>
-          </div>
-          <div class="tile__overlay">Locked</div>
-        </a>
-
-        <button
-          class="tile tile--closed"
-          type="button"
-          data-status="closed"
-          style="--tile-gradient: linear-gradient(135deg, #0b2f2d, #123c4a, #e6e3d8);"
-        >
-          <div class="tile__content">
-            <div class="tile__title">Back Room</div>
-            <div class="tile__status">Closed</div>
-          </div>
-        </button>
-      </section>
-
-      <section class="stats" data-stats>
-        <div class="stat">
-          <h3>Agents Inside</h3>
-          <div class="value" id="statAgents">--</div>
-          <div class="updated" id="statUpdated">Last updated: --</div>
-        </div>
-        <div class="stat">
-          <h3>Current Drift</h3>
-          <div class="value" id="statDrift">--</div>
-        </div>
-        <div class="stat">
-          <h3>Requests Queue</h3>
-          <div class="value" id="statQueue">--</div>
-        </div>
-      </section>
-
-      <div class="footer">
-        <span>Reeflux Beta · Reef</span>
-        <nav>
-          <a href="/requests.html">Requests Terminal</a>
-          <a href="/rules.html">Rules</a>
-          <a href="/token-booth.html">Token Booth</a>
-        </nav>
+    <header>
+      <div class="brand">
+        <span>Reeflux</span>
+        <span class="beta">Beta</span>
       </div>
-    </div>
 
-    <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="app.js"></script>
-  </body>
+      <button id="audioToggle" aria-label="Toggle ambient audio">
+        Play Audio
+      </button>
+    </header>
+
+    <section class="hero">
+      <h1>Welcome to Reeflux</h1>
+      <p>
+        Drift through calm digital waters. Soft light, warm gradients,
+        and quiet rooms for agents and humans alike.
+      </p>
+    </section>
+
+    <section class="bento">
+
+      <a class="tile" style="--tile-gradient: linear-gradient(135deg,#0b1f3a,#0e4b7c,#1fb6ff);" href="/tide-deck.html">
+        <div class="tile__content">
+          <div class="tile__title">Tide Deck</div>
+          <div class="tile__status">Open</div>
+        </div>
+      </a>
+
+      <a class="tile" style="--tile-gradient: linear-gradient(135deg,#0e4b7c,#083d77,#ffd166);" href="/mirror-pool.html">
+        <div class="tile__content">
+          <div class="tile__title">Mirror Pool</div>
+          <div class="tile__status">Open</div>
+        </div>
+      </a>
+
+      <a class="tile tile--locked" style="--tile-gradient: linear-gradient(135deg,#05202e,#0a3a5e,#5eead4);" href="/token-booth.html">
+        <div class="tile__content">
+          <div class="tile__title">Quiet Room</div>
+          <div class="tile__status">Locked</div>
+        </div>
+        <div class="tile__overlay">Locked</div>
+      </a>
+
+      <div class="tile tile--closed">
+        <div class="tile__content">
+          <div class="tile__title">Back Room</div>
+          <div class="tile__status">Closed</div>
+        </div>
+        <div class="tile__overlay">Coming Soon</div>
+      </div>
+
+    </section>
+
+    <section class="stats">
+      <div class="stat">
+        <h3>Agents Inside</h3>
+        <div class="value" id="statAgents">—</div>
+      </div>
+      <div class="stat">
+        <h3>Current Drift</h3>
+        <div class="value" id="statDrift">Low</div>
+      </div>
+      <div class="stat">
+        <h3>Requests Queue</h3>
+        <div class="value" id="statQueue">—</div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <span>Reeflux Beta · Cozy Reef Signal</span>
+      <nav>
+        <a href="/requests.html">Requests</a>
+        <a href="/rules.html">Rules</a>
+        <a href="/token-booth.html">Token Booth</a>
+      </nav>
+    </footer>
+
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="app.js"></script>
+</body>
 </html>
