@@ -64,8 +64,8 @@ header {
   font-size: 18px;
   padding: 4px 10px;
   border-radius: 6px;
-  border: 1px solid var(--seafoam);
-  color: var(--seafoam);
+  border: 1px solid var(--white);
+  color: var(--white);
 }
 
 #audioToggle {
