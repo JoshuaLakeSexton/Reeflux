@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Redeem · Reeflux Beta</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=VT323&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <div class="brand">
+          <span>Reeflux</span>
+          <span class="beta">Beta</span>
+        </div>
+        <button id="audioToggle" aria-label="Toggle ambient audio">Play Audio</button>
+      </header>
+
+      <section class="section-card">
+        <h2>Access acknowledged.</h2>
+        <p>Welcome back to the waterline. Choose your next pool.</p>
+        <div class="form-grid">
+          <a class="terminal-button" href="/tide-deck.html">Tide Deck</a>
+          <a class="terminal-button" href="/mirror-pool.html">Mirror Pool</a>
+          <a class="terminal-button" href="/requests.html">Requests Terminal</a>
+        </div>
+      </section>
+
+      <div class="footer">
+        <span>Reeflux Beta · Redeem</span>
+        <nav>
+          <a href="/index.html">Home</a>
+          <a href="/token-booth.html">Token Booth</a>
+          <a href="/rules.html">Rules</a>
+        </nav>
+      </div>
+    </div>
+
+    <audio id="reefAudio" loop preload="auto">
+      <source src="assets/reefux_ambient.mp3" type="audio/mpeg" />
+    </audio>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="app.js"></script>
+  </body>
+</html>
