@@ -21,39 +21,68 @@ const showToast = (message) => {
 };
 
 const setupAudio = () => {
-  if (!audio || !audioToggle) return;
-  audio.volume = 0.25;
-  const storedState = localStorage.getItem(audioStateKey);
-  const wantsPlay = storedState === "playing";
-  setAudioButton(wantsPlay);
+ (function initAudioToggle(){
+  const audio = document.getElementById('reefAudio');
+  const btn = document.getElementById('audioToggle');
+  if (!audio || !btn) return;
 
-  if (wantsPlay) {
-    audio
-      .play()
-      .then(() => setAudioButton(true))
-      .catch(() => {
-        setAudioButton(false);
-        localStorage.setItem(audioStateKey, "paused");
-      });
+  const icon = btn.querySelector('.audio-btn__icon');
+  const text = btn.querySelector('.audio-btn__text');
+
+  const FADE_DURATION = 1500; // ms
+  const TARGET_VOLUME = 0.25;
+  let fadeInterval = null;
+
+  audio.volume = 0;
+
+  function fadeTo(target){
+    clearInterval(fadeInterval);
+    const step = 50;
+    const delta = (target - audio.volume) / (FADE_DURATION / step);
+
+    fadeInterval = setInterval(() => {
+      audio.volume = Math.max(0, Math.min(1, audio.volume + delta));
+      if (Math.abs(audio.volume - target) < 0.02) {
+        audio.volume = target;
+        clearInterval(fadeInterval);
+      }
+    }, step);
   }
 
-  audioToggle.addEventListener("click", () => {
+  function setUI(isPlaying){
+    btn.setAttribute('aria-pressed', String(isPlaying));
+    icon.textContent = isPlaying ? '❚❚' : '►';
+    text.textContent = isPlaying ? 'PAUSE' : 'PLAY';
+  }
+
+  // Restore state
+  const saved = localStorage.getItem('reefAudioState');
+  if (saved === 'playing') {
+    audio.play().then(() => {
+      fadeTo(TARGET_VOLUME);
+      setUI(true);
+    }).catch(() => setUI(false));
+  }
+
+  btn.addEventListener('click', async () => {
     if (audio.paused) {
-      audio
-        .play()
-        .then(() => {
-          localStorage.setItem(audioStateKey, "playing");
-          setAudioButton(true);
-        })
-        .catch(() => {
-          localStorage.setItem(audioStateKey, "paused");
-          setAudioButton(false);
-          showToast("Audio blocked by browser.");
-        });
+      try {
+        await audio.play();
+        fadeTo(TARGET_VOLUME);
+        setUI(true);
+        localStorage.setItem('reefAudioState', 'playing');
+      } catch {
+        setUI(false);
+      }
     } else {
-      audio.pause();
-      localStorage.setItem(audioStateKey, "paused");
-      setAudioButton(false);
+      fadeTo(0);
+      setTimeout(() => audio.pause(), FADE_DURATION);
+      setUI(false);
+      localStorage.setItem('reefAudioState', 'paused');
+    }
+  });
+})();
+
     }
   });
 };
