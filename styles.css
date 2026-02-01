@@ -4,10 +4,10 @@
   --seafoam: #5eead4;
   --coral: #f59e7a;
   --sand: #e6e3d8;
-  --glow: rgba(245, 158, 122, 0.25);
+  --glow: rgba(245, 158, 122, 0.10);
   --text: #e9f5f2;
   --muted: rgba(233, 245, 242, 0.7);
-  --panel: rgba(12, 44, 43, 0.75);
+  --panel: rgba(12, 44, 43, 0.25);
 }
 
 html, body {
@@ -28,7 +28,7 @@ body {
   /* Background: glow + dark overlay + image */
   background:
     radial-gradient(circle at top, rgba(94, 234, 212, 0.10), transparent 10%),
-    linear-gradient(rgba(11, 47, 45, 0.65), rgba(11, 47, 45, 0.65)),
+    linear-gradient(rgba(11, 47, 45, 0.10), rgba(11, 47, 45, 0.10)),
     url("/assets/reeflux_bg.png") center / cover no-repeat fixed;
 
   background-color: var(--reef-deep);
@@ -51,7 +51,7 @@ a {
 }
 
 .main-wrap {
-  background: rgba(11, 47, 45, 0.45);
+  background: rgba(11, 47, 45, 0.10);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border-radius: 20px;
@@ -147,7 +147,7 @@ header {
   inset: 0;
   background: var(--tile-gradient);
   background-size: 220% 220%;
-  animation: drift var(--drift-duration, 40s) ease-in-out infinite;
+  animation: drift var(--drift-duration, 20s) ease-in-out infinite;
   z-index: 0;
 }
 
@@ -156,8 +156,8 @@ header {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(90deg, rgba(0, 0, 0, 0.2) 50%, transparent 50%),
-    linear-gradient(0deg, rgba(0, 0, 0, 0.2) 50%, transparent 50%);
+    linear-gradient(90deg, rgba(0, 0, 0, 0.2) 10%, transparent 10%),
+    linear-gradient(0deg, rgba(0, 0, 0, 0.2) 10%, transparent 10%);
   background-size: 12px 12px;
   opacity: 0.25;
   mix-blend-mode: overlay;
