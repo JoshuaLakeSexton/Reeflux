@@ -6,7 +6,7 @@ A static, MS-DOS-inspired landing site for Reeflux Beta with animated pixel pool
 Place the ambient MP3 at:
 
 ```
-assets/reefux_ambient.mp3
+assets/reeflux.mp3
 ```
 
 The site loads this file via `<audio id="reefAudio" loop preload="auto">` and requires a user gesture to start playback.
