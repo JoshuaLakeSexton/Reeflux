@@ -1,0 +1,11 @@
+[build]
+  command = ""
+  publish = "."
+
+# Optional but recommended for a multi-page static site:
+# ensures direct navigation to /tide-deck.html etc works fine even if you later switch to extensionless routes
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  force = false
