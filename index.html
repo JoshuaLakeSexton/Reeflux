@@ -1,12 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
-  <audio id="reefAudio" preload="auto" loop>
-  <source src="assets/reefux.mp3" type="audio/mpeg" />
-</audio>
-<head>
+  <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Reeflux Beta</title>
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -15,14 +13,22 @@
     />
     <link rel="stylesheet" href="styles.css" />
   </head>
+
   <body>
-    <div class="container">
+    <!-- Ambient audio (must be inside body; will only play after user interaction) -->
+    <audio id="reefAudio" preload="auto" loop>
+      <source src="/assets/reefux.mp3" type="audio/mpeg" />
+    </audio>
+
+    <div class="container main-wrap">
       <header>
         <div class="brand">
           <span>Reeflux</span>
           <span class="beta">Beta</span>
         </div>
-        <button id="audioToggle" aria-label="Toggle ambient audio">Play Audio</button>
+        <button id="audioToggle" aria-label="Toggle ambient audio">
+          Play Audio
+        </button>
       </header>
 
       <section class="hero">
@@ -44,6 +50,7 @@
             <div class="tile__status">Open</div>
           </div>
         </a>
+
         <a
           class="tile"
           style="--tile-gradient: linear-gradient(135deg, #123c4a, #0b2f2d, #f59e7a);"
@@ -54,6 +61,7 @@
             <div class="tile__status">Open</div>
           </div>
         </a>
+
         <a
           class="tile tile--locked"
           style="--tile-gradient: linear-gradient(135deg, #0b2f2d, #5eead4, #e6e3d8);"
@@ -65,6 +73,7 @@
           </div>
           <div class="tile__overlay">Locked</div>
         </a>
+
         <button
           class="tile tile--closed"
           type="button"
@@ -104,9 +113,6 @@
       </div>
     </div>
 
-    <audio id="reefAudio" loop preload="auto">
-      <source src="assets/reefux_ambient.mp3" type="audio/mpeg" />
-    </audio>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="app.js"></script>
   </body>
