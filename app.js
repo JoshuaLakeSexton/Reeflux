@@ -1,11 +1,11 @@
 // ===== Stripe Payment Links (paste your real Stripe "Payment Link" URLs here) =====
 // Subscription: Reeflux Drift Pass ($/month)
-const DRIFT_PASS_URL = https://buy.stripe.com/aFacN75Kj64hbSR3DL6wE00;
+const DRIFT_PASS_URL = "https://buy.stripe.com/aFacN75Kj64hbSR3DL6wE00";
 
 // One-time pool unlocks ($0.50 each)
-const TIDE_DECK_URL = https://buy.stripe.com/eVq8wR4Gf1O14qp0rz6wE01;
-const MIRROR_POOL_URL = https://buy.stripe.com/eVq8wR4Gf1O14qp0rz6wE01;
-const QUIET_ROOM_URL = https://buy.stripe.com/eVq8wR4Gf1O14qp0rz6wE01;
+const TIDE_DECK_URL = "https://buy.stripe.com/eVq8wR4Gf1O14qp0rz6wE01";
+const MIRROR_POOL_URL = "https://buy.stripe.com/eVq8wR4Gf1O14qp0rz6wE01";
+const QUIET_ROOM_URL = "https://buy.stripe.com/eVq8wR4Gf1O14qp0rz6wE01";
 
 // ===== Audio =====
 const AUDIO_KEY = "reeflux_audio_state"; // "playing" | "paused"
@@ -13,7 +13,7 @@ const audio = document.getElementById("reefAudio");
 const audioToggle = document.getElementById("audioToggle");
 const toast = document.getElementById("toast");
 
-const FADE_MS = 200;
+const FADE_MS = 1200;
 const TARGET_VOL = 0.26;
 
 function showToast(msg){
@@ -48,7 +48,7 @@ async function playWithFade(){
   if(!audio) return;
   audio.volume = 0;
   try{
-    await audio.play();               // requires user gesture unless previously allowed
+    await audio.play();
     fadeTo(TARGET_VOL);
     localStorage.setItem(AUDIO_KEY, "playing");
     setAudioUI(true);
@@ -61,9 +61,7 @@ async function playWithFade(){
 function pauseWithFade(){
   if(!audio) return;
   fadeTo(0);
-  window.setTimeout(()=>{
-    audio.pause();
-  }, FADE_MS);
+  window.setTimeout(()=> audio.pause(), FADE_MS);
   localStorage.setItem(AUDIO_KEY, "paused");
   setAudioUI(false);
 }
@@ -71,13 +69,11 @@ function pauseWithFade(){
 function setupAudio(){
   if(!audio || !audioToggle) return;
 
-  // If previously playing, try to resume (may still be blocked by browser)
   const saved = localStorage.getItem(AUDIO_KEY);
   setAudioUI(saved === "playing");
 
   if(saved === "playing"){
-    // attempt (may fail without gesture)
-    playWithFade();
+    playWithFade(); // may be blocked unless previously allowed
   }
 
   audioToggle.addEventListener("click", async ()=>{
@@ -86,7 +82,7 @@ function setupAudio(){
   });
 }
 
-// ===== Tiles / buttons =====
+// ===== Closed tiles =====
 function setupClosedTiles(){
   document.querySelectorAll("[data-status='closed']").forEach((el)=>{
     el.addEventListener("click", (e)=>{
@@ -103,13 +99,13 @@ function setupStripeLinks(){
   const elMirror = document.getElementById("buyMirrorPool");
   const elQuiet = document.getElementById("buyQuietRoom");
 
-  if(elSub) elSub.href = https://buy.stripe.com/aFacN75Kj64hbSR3DL6wE00;
-  if(elTide) elTide.href = https://buy.stripe.com/eVq8wR4Gf1O14qp0rz6wE01;
-  if(elMirror) elMirror.href = https://buy.stripe.com/eVq8wR4Gf1O14qp0rz6wE01;
-  if(elQuiet) elQuiet.href = https://buy.stripe.com/eVq8wR4Gf1O14qp0rz6wE01;
+  if(elSub) elSub.href = "https://buy.stripe.com/aFacN75Kj64hbSR3DL6wE00";
+  if(elTide) elTide.href = "https://buy.stripe.com/eVq8wR4Gf1O14qp0rz6wE01";
+  if(elMirror) elMirror.href = "https://buy.stripe.com/eVq8wR4Gf1O14qp0rz6wE01";
+  if(elQuiet) elQuiet.href = "https://buy.stripe.com/eVq8wR4Gf1O14qp0rz6wE01";
 }
 
-// ===== Requests form (Netlify Forms works without JS; this is just UX toast) =====
+// ===== Requests form UX toast (Netlify Forms works without JS too) =====
 function setupRequestsForm(){
   const form = document.querySelector("[data-reeflux-form]");
   if(!form) return;
@@ -118,8 +114,168 @@ function setupRequestsForm(){
   });
 }
 
+// ===== Tide Deck Logs (local, persistent) =====
+const TIDE_KEY = "reeflux_tide_logs_v1";
+const TIDE_MAX = 30;
+
+function nowStamp(){
+  const d = new Date();
+  // readable but compact
+  return d.toLocaleString(undefined, {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
+function randFrom(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
+
+function generateTideMessage(){
+  const a = [
+    "reef-light ripples",
+    "low-frequency hush",
+    "pixel foam drifts",
+    "salt-glow signal",
+    "quiet current",
+    "soft refract",
+    "blue-green shimmer",
+    "warm coral ember"
+  ];
+  const b = [
+    "stabilizing",
+    "settling",
+    "aligning",
+    "recalibrating",
+    "diffusing",
+    "holding",
+    "listening",
+    "routing"
+  ];
+  const c = [
+    "toward Tide Deck",
+    "toward Mirror Pool",
+    "toward Quiet Room",
+    "toward Operator",
+    "through the back channel",
+    "through shallow water",
+    "into slow time",
+    "into calm"
+  ];
+  return `${randFrom(a)} · ${randFrom(b)} · ${randFrom(c)}`;
+}
+
+function readTideLogs(){
+  try{
+    const raw = localStorage.getItem(TIDE_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  }catch{
+    return [];
+  }
+}
+
+function writeTideLogs(logs){
+  localStorage.setItem(TIDE_KEY, JSON.stringify(logs.slice(0, TIDE_MAX)));
+}
+
+function renderTideLogs(){
+  const list = document.getElementById("tideList");
+  const empty = document.getElementById("tideEmpty");
+  if(!list || !empty) return;
+
+  const logs = readTideLogs();
+  list.innerHTML = "";
+
+  if(logs.length === 0){
+    empty.style.display = "block";
+    return;
+  }
+  empty.style.display = "none";
+
+  logs.forEach((item)=>{
+    const row = document.createElement("div");
+    row.className = "panel";
+    row.style.padding = "10px 12px";
+    row.style.background = "rgba(0,0,0,.18)";
+    row.style.borderRadius = "14px";
+
+    const top = document.createElement("div");
+    top.style.display = "flex";
+    top.style.justifyContent = "space-between";
+    top.style.gap = "10px";
+    top.style.alignItems = "baseline";
+
+    const stamp = document.createElement("div");
+    stamp.textContent = item.ts;
+    stamp.style.fontFamily = "VT323, monospace";
+    stamp.style.fontSize = "20px";
+    stamp.style.opacity = "0.9";
+
+    const tag = document.createElement("div");
+    tag.textContent = item.tag || "deck";
+    tag.style.fontFamily = "VT323, monospace";
+    tag.style.fontSize = "18px";
+    tag.style.opacity = "0.7";
+
+    const msg = document.createElement("div");
+    msg.textContent = item.msg;
+    msg.style.marginTop = "6px";
+    msg.style.color = "rgba(230,227,216,.82)";
+    msg.style.lineHeight = "1.35";
+
+    top.appendChild(stamp);
+    top.appendChild(tag);
+    row.appendChild(top);
+    row.appendChild(msg);
+
+    list.appendChild(row);
+  });
+}
+
+function addTideLog(customMsg){
+  const logs = readTideLogs();
+  const entry = {
+    ts: nowStamp(),
+    tag: "tide",
+    msg: customMsg || generateTideMessage()
+  };
+  logs.unshift(entry);
+  writeTideLogs(logs);
+  renderTideLogs();
+  showToast("Tide log recorded.");
+}
+
+function setupTideDeck(){
+  // only runs on tide-deck page (elements exist)
+  const btn = document.getElementById("makeTideLog");
+  const clear = document.getElementById("clearTideLogs");
+  const list = document.getElementById("tideList");
+  if(!list) return;
+
+  renderTideLogs();
+
+  // auto-generate one on visit if empty OR if last is older than ~6 hours
+  const logs = readTideLogs();
+  const shouldAuto = logs.length === 0;
+  if(shouldAuto) addTideLog("first drift · deck wakes · signal begins");
+
+  if(btn){
+    btn.addEventListener("click", ()=> addTideLog());
+  }
+  if(clear){
+    clear.addEventListener("click", ()=>{
+      localStorage.removeItem(TIDE_KEY);
+      renderTideLogs();
+      showToast("Logs cleared.");
+    });
+  }
+}
+
 // ===== Init =====
 setupAudio();
 setupClosedTiles();
 setupStripeLinks();
 setupRequestsForm();
+setupTideDeck();
