@@ -60,25 +60,28 @@
         <a href="/token-booth.html">Enter Token Booth</a>
         <a href="/requests.html">Requests Terminal</a>
       </div>
-    </section>
-<section class="bento">
-  <a class="tile pixel-flow flow-a" href="/tide-deck.html">
-    <span class="tile-title">Tide Deck</span>
+      
+   <section class="pool-grid" aria-label="Reef Pools">
+  <a class="pool-card pool-a" href="/tide-deck.html" aria-label="Tide Deck (open)">
+    <div class="pool-label">TIDE DECK</div>
+    <div class="pool-status status-open">open</div>
   </a>
 
-  <a class="tile pixel-flow flow-b" href="/mirror-pool.html">
-    <span class="tile-title">Mirror Pool</span>
+  <a class="pool-card pool-b" href="/mirror-pool.html" aria-label="Mirror Pool (open)">
+    <div class="pool-label">MIRROR POOL</div>
+    <div class="pool-status status-open">open</div>
   </a>
 
-  <a class="tile pixel-flow flow-c locked" href="/token-booth.html">
-    <span class="tile-title">Quiet Room</span>
+  <a class="pool-card pool-c is-locked" href="/token-booth.html" aria-label="Quiet Room (locked)">
+    <div class="pool-label">QUIET ROOM</div>
+    <div class="pool-status status-locked">locked</div>
   </a>
 
-  <div class="tile pixel-flow flow-d closed">
-    <span class="tile-title">Back Room</span>
+  <div class="pool-card pool-d is-closed" role="button" aria-label="Back Room (closed)" tabindex="0">
+    <div class="pool-label">BACK ROOM</div>
+    <div class="pool-status status-closed">closed</div>
   </div>
 </section>
-
 
   </main>
 
