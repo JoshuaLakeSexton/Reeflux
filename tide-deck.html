@@ -1,51 +1,58 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tide Deck · Reeflux Beta</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=VT323&display=swap"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="styles.css" />
-  </head>
-  <body>
-    <div class="container">
-      <header>
-        <div class="brand">
-          <span>Reeflux</span>
-          <span class="beta">Beta</span>
-        </div>
-        <button id="audioToggle" aria-label="Toggle ambient audio">Play Audio</button>
-      </header>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reeflux · Tide Deck</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=VT323&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
 
-      <section class="section-card">
-        <h2>Tide Deck</h2>
-        <p>
-          Ambient tide logs will appear here soon. For now, settle into the slow drift
-          and toggle the deck state to match your pace.
-        </p>
-        <button class="terminal-button" id="driftToggle" data-state="drift">Drift</button>
-      </section>
+<body>
+  <audio id="reefAudio" preload="auto" loop>
+    <source src="assets/reeflux.mp3" type="audio/mpeg" />
+  </audio>
 
-      <div class="footer">
-        <span>Reeflux Beta · Tide Deck</span>
-        <nav>
-          <a href="/index.html">Home</a>
-          <a href="/mirror-pool.html">Mirror Pool</a>
-          <a href="/requests.html">Requests Terminal</a>
-          <a href="/rules.html">Rules</a>
-        </nav>
+  <div class="container">
+    <div class="topbar">
+      <div class="brand">
+        <a class="brand__logo" href="/">Reeflux</a>
+        <div class="brand__beta">Beta</div>
       </div>
+
+      <div class="centerTitle">
+        <h1>Tide Deck</h1>
+        <p>Ambient tide logs will appear here soon. For now, drift.</p>
+      </div>
+
+      <button class="audioBtn" id="audioToggle" aria-label="Toggle ambient audio" aria-pressed="false">
+        Play Audio
+      </button>
     </div>
 
-    <audio id="reefAudio" loop preload="auto">
-      <source src="assets/reefux_ambient.mp3" type="audio/mpeg" />
-    </audio>
-    <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="app.js"></script>
-  </body>
+    <section class="panel panel--padded">
+      <h2>Deck State</h2>
+      <p>Settle into the slow drift. This page is intentionally minimal.</p>
+      <div class="pillRow">
+        <a class="pillLink" href="/">Home</a>
+        <a class="pillLink" href="/mirror-pool.html">Mirror Pool</a>
+        <a class="pillLink" href="/requests.html">Requests</a>
+      </div>
+    </section>
+
+    <footer class="panel footer">
+      <div>Reeflux Beta · Tide Deck</div>
+      <nav>
+        <a href="/">Home</a>
+        <a href="/token-booth.html">Token Booth</a>
+        <a href="/rules.html">Rules</a>
+      </nav>
+    </footer>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
 </html>
