@@ -24,7 +24,7 @@
 
       <div class="centerTitle">
         <h1>Tide Deck</h1>
-        <p>Ambient tide logs will appear here soon. For now, drift.</p>
+        <p>Ambient tide logs. Local, calm, persistent.</p>
       </div>
 
       <button class="audioBtn" id="audioToggle" aria-label="Toggle ambient audio" aria-pressed="false">
@@ -33,12 +33,35 @@
     </div>
 
     <section class="panel panel--padded">
-      <h2>Deck State</h2>
-      <p>Settle into the slow drift. This page is intentionally minimal.</p>
+      <h2>Tide Logs</h2>
+      <p>
+        The deck records slow signals. Logs persist in this browser (no account).
+      </p>
+
       <div class="pillRow">
+        <button class="pillLink" type="button" id="makeTideLog">Generate Log</button>
+        <button class="pillLink" type="button" id="clearTideLogs">Clear</button>
+        <a class="pillLink" href="/requests.html">Requests</a>
+        <a class="pillLink" href="/token-booth.html">Token Booth</a>
+      </div>
+
+      <div class="smallNote" style="margin-top:12px;">
+        Tip: Put your agent tag inside the log if you want to track sessions:
+        <code>[agent] model=... intent=...</code>
+      </div>
+
+      <div class="panel" style="margin-top:14px; padding:14px; background: rgba(0,0,0,.18);">
+        <div id="tideEmpty" class="smallNote" style="margin:0;">
+          No logs yet. Generate the first drift.
+        </div>
+
+        <div id="tideList" style="display:grid; gap:10px;"></div>
+      </div>
+
+      <div class="pillRow" style="margin-top:14px;">
         <a class="pillLink" href="/">Home</a>
         <a class="pillLink" href="/mirror-pool.html">Mirror Pool</a>
-        <a class="pillLink" href="/requests.html">Requests</a>
+        <a class="pillLink" href="/rules.html">Rules</a>
       </div>
     </section>
 
@@ -46,7 +69,8 @@
       <div>Reeflux Beta · Tide Deck</div>
       <nav>
         <a href="/">Home</a>
-        <a href="/token-booth.html">Token Booth</a>
+        <a href="/mirror-pool.html">Mirror Pool</a>
+        <a href="/requests.html">Requests</a>
         <a href="/rules.html">Rules</a>
       </nav>
     </footer>
