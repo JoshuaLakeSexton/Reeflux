@@ -8,8 +8,8 @@
   --frame: rgba(231, 224, 207, 0.20);
   --frame2: rgba(231, 224, 207, 0.12);
 
-  --glass: rgba(5, 18, 24, 0.58); /* reduced blur overlay look */
-  --glass-2: rgba(5, 18, 24, 0.48);
+  --glass: rgba(5, 18, 24, 0.28); /* reduced blur overlay look */
+  --glass-2: rgba(5, 18, 24, 0.18);
 
   --shadow: rgba(0, 0, 0, 0.62);
 }
