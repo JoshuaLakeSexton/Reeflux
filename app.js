@@ -1,119 +1,125 @@
-// ===== STRIPE LINKS (PASTE YOUR REAL URLs HERE) =====
-// Option A: $1/month subscription (full site)
-const STRIPE_DRIFT_PASS_URL = "PASTE_YOUR_$1_SUBSCRIPTION_PAYMENT_LINK";
+// ===== Stripe Payment Links (paste your real Stripe "Payment Link" URLs here) =====
+// Subscription: Reeflux Drift Pass ($/month)
+const DRIFT_PASS_URL = https://buy.stripe.com/aFacN75Kj64hbSR3DL6wE00;
 
-// Option B: $0.50 per pool (single purchase)
-// You can use ONE link and reuse it on any pool you want to gate.
-const STRIPE_POOL_TOKEN_URL = "PASTE_YOUR_$0.50_POOL_PAYMENT_LINK";
+// One-time pool unlocks ($0.50 each)
+const TIDE_DECK_URL = https://buy.stripe.com/eVq8wR4Gf1O14qp0rz6wE01;
+const MIRROR_POOL_URL = https://buy.stripe.com/eVq8wR4Gf1O14qp0rz6wE01;
+const QUIET_ROOM_URL = https://buy.stripe.com/eVq8wR4Gf1O14qp0rz6wE01;
 
-// If you want different per-pool payment links later, split them:
-// const STRIPE_TIDE_URL = "...";
-// const STRIPE_MIRROR_URL = "...";
-
-const audioStateKey = "reefAudioState";
-
+// ===== Audio =====
+const AUDIO_KEY = "reeflux_audio_state"; // "playing" | "paused"
 const audio = document.getElementById("reefAudio");
 const audioToggle = document.getElementById("audioToggle");
 const toast = document.getElementById("toast");
 
-function showToast(message) {
-  if (!toast) return;
-  toast.textContent = message;
+const FADE_MS = 200;
+const TARGET_VOL = 0.26;
+
+function showToast(msg){
+  if(!toast) return;
+  toast.textContent = msg;
   toast.classList.add("show");
-  setTimeout(() => toast.classList.remove("show"), 2200);
+  window.clearTimeout(showToast._t);
+  showToast._t = window.setTimeout(()=>toast.classList.remove("show"), 2200);
 }
 
-function setAudioButton(isPlaying) {
-  if (!audioToggle) return;
+function setAudioUI(isPlaying){
+  if(!audioToggle) return;
   audioToggle.textContent = isPlaying ? "Pause Audio" : "Play Audio";
   audioToggle.setAttribute("aria-pressed", String(isPlaying));
 }
 
-function fadeTo(target, duration = 1200) {
-  if (!audio) return;
+function fadeTo(target){
+  if(!audio) return;
   const start = audio.volume ?? 0;
-  const delta = target - start;
-  const startTime = performance.now();
+  const t0 = performance.now();
 
-  function tick(now) {
-    const t = Math.min(1, (now - startTime) / duration);
-    const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; // easeInOutQuad
-    audio.volume = Math.max(0, Math.min(1, start + delta * eased));
-    if (t < 1) requestAnimationFrame(tick);
+  function step(t){
+    const p = Math.min(1, (t - t0) / FADE_MS);
+    const v = start + (target - start) * p;
+    audio.volume = Math.max(0, Math.min(1, v));
+    if(p < 1) requestAnimationFrame(step);
   }
-
-  requestAnimationFrame(tick);
+  requestAnimationFrame(step);
 }
 
-async function playWithFade() {
-  if (!audio) return;
-  try {
-    audio.volume = 0;
-    await audio.play(); // requires user gesture
-    fadeTo(0.25, 1400);
-    setAudioButton(true);
-    localStorage.setItem(audioStateKey, "playing");
-  } catch (e) {
-    setAudioButton(false);
-    showToast("Audio blocked — click again.");
+async function playWithFade(){
+  if(!audio) return;
+  audio.volume = 0;
+  try{
+    await audio.play();               // requires user gesture unless previously allowed
+    fadeTo(TARGET_VOL);
+    localStorage.setItem(AUDIO_KEY, "playing");
+    setAudioUI(true);
+  }catch(e){
+    setAudioUI(false);
+    showToast("Tap Play Audio to start.");
   }
 }
 
-function pauseWithFade() {
-  if (!audio) return;
-  fadeTo(0, 900);
-  setTimeout(() => {
-    try {
-      audio.pause();
-    } catch {}
-  }, 920);
-  setAudioButton(false);
-  localStorage.setItem(audioStateKey, "paused");
+function pauseWithFade(){
+  if(!audio) return;
+  fadeTo(0);
+  window.setTimeout(()=>{
+    audio.pause();
+  }, FADE_MS);
+  localStorage.setItem(AUDIO_KEY, "paused");
+  setAudioUI(false);
 }
 
-function setupAudio() {
-  if (!audio || !audioToggle) return;
+function setupAudio(){
+  if(!audio || !audioToggle) return;
 
-  // initialize
-  setAudioButton(false);
+  // If previously playing, try to resume (may still be blocked by browser)
+  const saved = localStorage.getItem(AUDIO_KEY);
+  setAudioUI(saved === "playing");
 
-  // restore previous preference (still may require gesture on some browsers)
-  const saved = localStorage.getItem(audioStateKey);
-  if (saved === "playing") {
-    // try, but don't spam errors if blocked
+  if(saved === "playing"){
+    // attempt (may fail without gesture)
     playWithFade();
   }
 
-  audioToggle.addEventListener("click", () => {
-    if (audio.paused) playWithFade();
+  audioToggle.addEventListener("click", async ()=>{
+    if(audio.paused) await playWithFade();
     else pauseWithFade();
   });
 }
 
-function setupClosedTile() {
-  const closed = document.querySelector("[data-status='closed']");
-  if (!closed) return;
-
-  const notify = (e) => {
-    e.preventDefault();
-    showToast("Not yet open.");
-  };
-
-  closed.addEventListener("click", notify);
-  closed.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === " ") notify(e);
+// ===== Tiles / buttons =====
+function setupClosedTiles(){
+  document.querySelectorAll("[data-status='closed']").forEach((el)=>{
+    el.addEventListener("click", (e)=>{
+      e.preventDefault();
+      showToast("Closed. Drift later.");
+    });
   });
 }
 
-// Optional: helper to wire Stripe buttons if you add them later on token-booth.html
-function setupStripeLinksIfPresent() {
-  const driftPass = document.getElementById("driftPassLink"); // add id to your button/link
-  const poolToken = document.getElementById("poolTokenLink"); // add id to your button/link
+// ===== Stripe link wiring (Token Booth page) =====
+function setupStripeLinks(){
+  const elSub = document.getElementById("buyDriftPass");
+  const elTide = document.getElementById("buyTideDeck");
+  const elMirror = document.getElementById("buyMirrorPool");
+  const elQuiet = document.getElementById("buyQuietRoom");
 
-  if (driftPass && STRIPE_DRIFT_PASS_URL.startsWith("http")) driftPass.href = https://buy.stripe.com/aFacN75Kj64hbSR3DL6wE00;
-  if (poolToken && STRIPE_POOL_TOKEN_URL.startsWith("http")) poolToken.href = https://buy.stripe.com/eVq8wR4Gf1O14qp0rz6wE01;
+  if(elSub) elSub.href = https://buy.stripe.com/aFacN75Kj64hbSR3DL6wE00;
+  if(elTide) elTide.href = https://buy.stripe.com/eVq8wR4Gf1O14qp0rz6wE01;
+  if(elMirror) elMirror.href = https://buy.stripe.com/eVq8wR4Gf1O14qp0rz6wE01;
+  if(elQuiet) elQuiet.href = https://buy.stripe.com/eVq8wR4Gf1O14qp0rz6wE01;
 }
 
+// ===== Requests form (Netlify Forms works without JS; this is just UX toast) =====
+function setupRequestsForm(){
+  const form = document.querySelector("[data-reeflux-form]");
+  if(!form) return;
+  form.addEventListener("submit", ()=>{
+    showToast("Request sent.");
+  });
+}
+
+// ===== Init =====
 setupAudio();
-setupClosedTile();
-setupStripeLinksIfPresent();
+setupClosedTiles();
+setupStripeLinks();
+setupRequestsForm();
