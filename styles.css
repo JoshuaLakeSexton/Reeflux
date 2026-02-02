@@ -391,3 +391,168 @@ textarea{ min-height: 120px; resize: vertical; }
   .centerTitle h1{ font-size: 40px; }
   .poolGrid{ grid-template-columns: 1fr; }
 }
+/* ---------- Tide Deck UI ---------- */
+.site-header {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.brand--small .brand__name {
+  font-family: "VT323", monospace;
+  font-size: 26px;
+  letter-spacing: 2px;
+}
+
+.header-center {
+  text-align: center;
+  opacity: 0.92;
+}
+
+.page-title {
+  font-family: "VT323", monospace;
+  letter-spacing: 2px;
+  font-size: 28px;
+}
+
+.page-subtitle {
+  font-size: 12px;
+  opacity: 0.72;
+}
+
+.page-grid {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 980px) {
+  .page-grid {
+    grid-template-columns: 1fr;
+  }
+  .site-header {
+    grid-template-columns: 1fr;
+    text-align: left;
+  }
+  .header-center {
+    text-align: left;
+  }
+}
+
+.panel {
+  background: rgba(8, 18, 20, 0.42);
+  border: 1px solid rgba(230, 227, 216, 0.22);
+  border-radius: 16px;
+  padding: 18px;
+  backdrop-filter: blur(6px);
+}
+
+.panel--side {
+  background: rgba(8, 18, 20, 0.30);
+  backdrop-filter: blur(5px);
+}
+
+.panel__title {
+  font-family: "VT323", monospace;
+  letter-spacing: 2px;
+  font-size: 26px;
+  margin: 0 0 8px;
+}
+
+.panel__text {
+  margin: 0 0 14px;
+  opacity: 0.86;
+  line-height: 1.5;
+}
+
+.panel__list {
+  margin: 0 0 14px;
+  padding-left: 18px;
+  opacity: 0.86;
+}
+
+.deck-controls {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.terminal-button--ghost {
+  opacity: 0.86;
+}
+
+.tide-terminal {
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(230, 227, 216, 0.18);
+  background: rgba(0, 0, 0, 0.20);
+}
+
+.tide-terminal__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(230, 227, 216, 0.16);
+  background: rgba(8, 18, 20, 0.34);
+}
+
+.tide-terminal__label {
+  font-family: "VT323", monospace;
+  letter-spacing: 2px;
+  font-size: 18px;
+  opacity: 0.92;
+}
+
+.tide-terminal__meta {
+  font-size: 12px;
+  opacity: 0.7;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.tide-terminal__screen {
+  margin: 0;
+  padding: 12px;
+  height: 320px;
+  overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  opacity: 0.95;
+  white-space: pre-wrap;
+}
+
+.mini-nav {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.mini-nav__link {
+  font-family: "VT323", monospace;
+  letter-spacing: 1px;
+  font-size: 18px;
+  text-decoration: none;
+  opacity: 0.88;
+}
+
+.mini-nav__link:hover {
+  opacity: 1;
+}
+
+.site-footer {
+  margin-top: 16px;
+  padding: 12px 2px 2px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  opacity: 0.7;
+  font-size: 12px;
+}
