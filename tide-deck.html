@@ -29,6 +29,18 @@
 })();
 </script>
   </head>
+<script>
+(async function () {
+  const next = encodeURIComponent("/mirror-pool.html");
+  try {
+    const res = await fetch("/.netlify/functions/verify-pass", { credentials: "include" });
+    const data = await res.json();
+    if (!data.allowed) window.location.href = `/token-booth.html?next=${next}`;
+  } catch (e) {
+    window.location.href = `/token-booth.html?next=${next}`;
+  }
+})();
+</script>
 
   <body class="page">
     <!-- Ambient Audio (shared across pages) -->
