@@ -1,33 +1,4 @@
-// netlify/functions/verify-pass.js
-
 const crypto = require("crypto");
-
-function decodeBase64Url(str) {
-  str = str.replace(/-/g, "+").replace(/_/g, "/");
-  // pad
-  while (str.length % 4) str += "=";
-  return Buffer.from(str, "base64").toString("utf8");
-}
-
-function verifyToken(token, secret) {
-  const parts = (token || "").split(".");
-  if (parts.length !== 2) return null;
-
-  const [payloadB64, sig] = parts;
-
-  const expectedSig = crypto
-    .createHmac("sha256", secret)
-    .update(payloadB64)
-    .digest("base64")
-    .replace(/=/g, "")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_");
-
-  if (sig !== expectedSig) return null;
-
-  const payloadJson = decodeBase64Url(payloadB64);
-  return JSON.parse(payloadJson);
-}
 
 function parseCookies(cookieHeader) {
   const out = {};
@@ -39,54 +10,49 @@ function parseCookies(cookieHeader) {
   return out;
 }
 
+function decodeB64UrlToJson(b64url) {
+  let s = b64url.replace(/-/g, "+").replace(/_/g, "/");
+  while (s.length % 4) s += "=";
+  return JSON.parse(Buffer.from(s, "base64").toString("utf8"));
+}
+
+function verify(token, secret) {
+  const parts = (token || "").split(".");
+  if (parts.length !== 2) return null;
+
+  const [payloadB64, sig] = parts;
+  const expected = crypto.createHmac("sha256", secret).update(payloadB64).digest("base64")
+    .replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+
+  if (sig !== expected) return null;
+  return decodeB64UrlToJson(payloadB64);
+}
+
 exports.handler = async (event) => {
   try {
     const cookies = parseCookies(event.headers.cookie);
     const token = cookies.reeflux_pass;
 
     if (!token) {
-      return {
-        statusCode: 200,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ allowed: false, reason: "no_pass" }),
-      };
+      return { statusCode: 200, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ allowed: false, reason: "no_pass" }) };
     }
 
-    const payload = verifyToken(token, process.env.PASS_SIGNING_SECRET);
+    const payload = verify(token, process.env.PASS_SIGNING_SECRET);
     if (!payload) {
-      return {
-        statusCode: 200,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ allowed: false, reason: "invalid_token" }),
-      };
+      return { statusCode: 200, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ allowed: false, reason: "invalid_token" }) };
     }
 
-    const now = Date.now();
-    if (!payload.exp || now > payload.exp) {
-      return {
-        statusCode: 200,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ allowed: false, reason: "expired" }),
-      };
+    if (!payload.exp || Date.now() > payload.exp) {
+      return { statusCode: 200, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ allowed: false, reason: "expired" }) };
     }
-
-    // Optional scope enforcement (MVP: any_pool)
-    // If you ever make pool-specific, pass ?pool=mirror or infer from page.
-    // Example:
-    // const pool = event.queryStringParameters?.pool;
-    // if (payload.scope !== "any_pool" && payload.scope !== `${pool}_pool`) ...
 
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        allowed: true,
-        scope: payload.scope,
-        expiresAt: payload.exp,
-      }),
+      body: JSON.stringify({ allowed: true, scope: payload.scope, expiresAt: payload.exp })
     };
-  } catch (err) {
-    console.error("verify-pass error:", err);
+  } catch (e) {
+    console.error("verify-pass error:", e);
     return { statusCode: 500, body: "verify-pass failed" };
   }
 };
