@@ -12,6 +12,22 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css" />
+    <script>
+(async function () {
+  try {
+    const res = await fetch("/.netlify/functions/verify-pass", { credentials: "include" });
+    const data = await res.json();
+
+    if (!data.allowed) {
+      const next = encodeURIComponent("/mirror-pool.html");
+      window.location.href = `/token-booth.html?next=${next}`;
+    }
+  } catch (e) {
+    const next = encodeURIComponent("/mirror-pool.html");
+    window.location.href = `/token-booth.html?next=${next}`;
+  }
+})();
+</script>
   </head>
 
   <body class="page">
