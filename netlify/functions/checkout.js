@@ -46,14 +46,14 @@ exports.handler = async (event) => {
               name: "Reeflux Drift Pass",
               description: `Unlock Reeflux pool access for ${minutes} minutes.`,
             },
-            unit_amount: 500, // $5.00 — change later if you want
+            unit_amount: 500, // $1.00 — change later if you want
           },
           quantity: 1,
         },
       ],
 
-      success_url: `${process.env.SITE_URL}/.netlify/functions/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.SITE_URL}/token-booth.html?canceled=1`,
+      success_url: `${process.env.https://reeflux.com}/.netlify/functions/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.https://reeflux.com}/token-booth.html?canceled=1`,
 
       metadata: {
         next: nextPath,
