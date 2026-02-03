@@ -125,5 +125,60 @@ document.addEventListener("click", async (e) => {
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="app.js"></script>
+  <script>
+document.addEventListener("DOMContentLoaded", () => {
+  // Use event delegation so it works even if buttons are re-rendered
+  document.body.addEventListener("click", async (e) => {
+    const btn = e.target.closest("[data-buy]");
+    if (!btn) return;
+
+    // Prevent other click handlers / overlays from swallowing the click
+    e.preventDefault();
+
+    // If token-booth has ?next=... in the URL, respect it for the monthly pass
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlNext = urlParams.get("next");
+
+    const kind = btn.getAttribute("data-buy");
+    const next = (kind === "monthly" && urlNext) ? urlNext : (btn.getAttribute("data-next") || "/tide-deck.html");
+    const minutes = parseInt(btn.getAttribute("data-minutes") || "30", 10);
+
+    // Simple loading state
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = "Opening Stripe…";
+
+    try {
+      const res = await fetch("/.netlify/functions/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          next: next,
+          scope: "any_pool",
+          minutes: minutes
+        })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.url) {
+        console.error("Checkout error:", data);
+        alert("Checkout failed. Open DevTools → Console for details.");
+        btn.disabled = false;
+        btn.textContent = originalText;
+        return;
+      }
+
+      // Go to Stripe Checkout
+      window.location.href = data.url;
+    } catch (err) {
+      console.error("Network/Function error:", err);
+      alert("Checkout failed (network/function). Check Netlify function logs.");
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  });
+});
+</script>
 </body>
 </html>
