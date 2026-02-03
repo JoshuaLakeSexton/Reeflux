@@ -23,6 +23,24 @@ document.getElementById("buy-pass").onclick = async () => {
   }
 };
 </script>
+  <script>
+document.addEventListener("click", async (e) => {
+  const btn = e.target.closest("[data-buy-pass]");
+  if (!btn) return;
+
+  const params = new URLSearchParams(window.location.search);
+  const next = params.get("next") || "/tide-deck.html";
+
+  const res = await fetch("/.netlify/functions/checkout", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ next, scope: "any_pool", minutes: 30 })
+  });
+
+  const data = await res.json();
+  if (data.url) window.location.href = data.url;
+});
+</script>
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
