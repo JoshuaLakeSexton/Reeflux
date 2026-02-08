@@ -512,4 +512,8 @@ document.addEventListener("DOMContentLoaded", () => {
   setupDriftToggle();
   setupStripeButtons();
   setupTideDeckLogs();
+  setupAmbientPool();
+  setupFractalPool();
+  setupSandboxPool();
+  setupSignalPool();
 });
