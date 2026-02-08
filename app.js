@@ -356,7 +356,151 @@ function setupTideDeckLogs() {
     nextLine();
     window.setTimeout(tick, ms);
   })();
+}/* -------------------- AMBIENT POOL -------------------- */
+function setupAmbientPool() {
+  const root = document.querySelector("[data-pool='ambient']");
+  if (!root) return;
+
+  const audio = document.getElementById("reefAudio");
+  const intensity = document.getElementById("ambientIntensity");
+  const mode = document.getElementById("ambientMode");
+  const visual = document.getElementById("ambientVisual");
+
+  if (intensity && audio) {
+    intensity.addEventListener("input", () => {
+      const v = Number(intensity.value || 0);
+      audio.volume = Math.max(0, Math.min(1, v));
+    });
+  }
+
+  if (mode && audio) {
+    mode.addEventListener("change", () => {
+      const val = String(mode.value || "reef");
+      // NOTE: add these audio files if you want multiple tracks
+      const map = {
+        reef: "/assets/reeflux.mp3",
+        white: "/assets/white-noise.mp3",
+        ocean: "/assets/ocean.mp3",
+      };
+      const src = map[val] || map.reef;
+      const source = audio.querySelector("source");
+      if (source) source.src = src;
+      audio.load();
+      audio.play().catch(() => showToast("Audio blocked. Tap Play Audio."));
+    });
+  }
+
+  if (visual && intensity) {
+    intensity.addEventListener("input", () => {
+      const v = Number(intensity.value || 0.25);
+      const speed = 40 - Math.round(v * 30); // higher intensity = faster
+      visual.style.animationDuration = `${Math.max(10, speed)}s`;
+    });
+  }
 }
+
+/* -------------------- FRACTAL POOL (lightweight canvas) -------------------- */
+function setupFractalPool() {
+  const root = document.querySelector("[data-pool='fractal']");
+  if (!root) return;
+
+  const canvas = document.getElementById("fractalCanvas");
+  const complexity = document.getElementById("fractalComplexity");
+  const recenter = document.getElementById("fractalRecenter");
+  if (!canvas) return;
+
+  const ctx = canvas.getContext("2d", { alpha: true });
+  let t = 0;
+  let seed = Math.random() * 1000;
+
+  function resize() {
+    const rect = canvas.getBoundingClientRect();
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    canvas.width = Math.floor(rect.width * dpr);
+    canvas.height = Math.floor(rect.height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function draw() {
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    if (!w || !h) return;
+
+    const k = Number(complexity?.value || 22); // 10..40
+    ctx.clearRect(0, 0, w, h);
+
+    // Simple Fibonacci-like spiral points with gentle drift
+    const cx = w * 0.5;
+    const cy = h * 0.5;
+    const phi = 1.61803398875;
+
+    for (let i = 0; i < k * 18; i++) {
+      const a = i * (Math.PI / phi) + t * 0.002;
+      const r = 0.8 * Math.sqrt(i) * (2 + (k / 40) * 4);
+      const x = cx + Math.cos(a + seed) * r;
+      const y = cy + Math.sin(a + seed) * r;
+
+      const alpha = 0.06 + (i / (k * 18)) * 0.16;
+      ctx.fillStyle = `rgba(230,227,216,${alpha})`;
+      ctx.fillRect(x, y, 1.2, 1.2);
+    }
+
+    t += 1;
+    requestAnimationFrame(draw);
+  }
+
+  window.addEventListener("resize", resize);
+  resize();
+  requestAnimationFrame(draw);
+
+  if (recenter) {
+    recenter.addEventListener("click", () => {
+      seed = Math.random() * 1000;
+      showToast("Recentered.");
+    });
+  }
+}
+
+/* -------------------- SANDBOX POOL -------------------- */
+function setupSandboxPool() {
+  const root = document.querySelector("[data-pool='sandbox']");
+  if (!root) return;
+
+  const area = document.getElementById("sandboxArea");
+  const wipe = document.getElementById("sandboxWipe");
+  const copy = document.getElementById("sandboxCopy");
+
+  if (wipe && area) {
+    wipe.addEventListener("click", () => {
+      area.value = "";
+      showToast("Cleared.");
+    });
+  }
+  if (copy && area) {
+    copy.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(area.value || "");
+        showToast("Copied.");
+      } catch {
+        showToast("Copy blocked.");
+      }
+    });
+  }
+}
+
+/* -------------------- SIGNAL POOL (stub) -------------------- */
+function setupSignalPool() {
+  const root = document.querySelector("[data-pool='signal']");
+  if (!root) return;
+
+  const ping = document.getElementById("signalPing");
+  if (ping) {
+    ping.addEventListener("click", () => {
+      showToast("No signal. Not always active.");
+    });
+  }
+}
+
 
 /* -------------------- INIT -------------------- */
 document.addEventListener("DOMContentLoaded", () => {
