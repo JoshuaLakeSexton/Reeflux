@@ -1,21 +1,28 @@
-/* Reeflux – app.js (shared across pages)
-   - Audio toggle + fade (gesture safe)
-   - Closed tile toast
-   - Stats loader (stats.json)
-   - Netlify form submit helper
-   - Mirror Pool small handler
-   - Drift toggle
-   - Stripe link injection
-   - Tide Deck live logs (session stored)
+/* app.js (Reeflux.com) */
+/*
+  Reeflux – app.js (shared across pages)
+  - Audio toggle + fade (gesture safe)
+  - Closed tile toast
+  - Stats loader (stats.json)
+  - Netlify form submit helper
+  - Mirror Pool small handler
+  - Drift toggle
+  - Stripe link injection (data-stripe)
+  - Tide Deck live logs (session stored)
 */
 
-const REEFLUX_DRIFT_PASS_URL = "https://buy.stripe.com/aFacN75Kj64hbSR3DL6wE00"; // $/month
-const POOL_ENTRY_URL = "https://buy.stripe.com/eVq8wR4Gf1O14qp0rz6wE01"; // $0.50/pool
-const MIRROR_SEAL_URL = "https://buy.stripe.com/eVq8wR4Gf1O14qp0rz6wE01"; // optional
+"use strict";
 
+/* -------------------- STRIPE LINKS -------------------- */
+const REEFLUX_DRIFT_PASS_URL = "https://buy.stripe.com/aFacN75Kj64hbSR3DL6wE00"; // $/month
+const POOL_ENTRY_URL = "https://buy.stripe.com/eVq8wR4Gf1O14qp0rz6wE01";         // $0.50/pool
+const MIRROR_SEAL_URL = "https://buy.stripe.com/eVq8wR4Gf1O14qp0rz6wE01";        // optional
+
+/* -------------------- KEYS -------------------- */
 const audioStateKey = "reefAudioState";
 const tideSessionKey = "reefTideLogs_v1";
 
+/* -------------------- TOAST -------------------- */
 const toast = document.getElementById("toast");
 
 function showToast(message) {
@@ -57,23 +64,19 @@ function setupAudio() {
 
   function setBtn(isPlaying) {
     btn.setAttribute("aria-pressed", String(isPlaying));
-    btn.querySelector(".audio-btn__text")
-      ? (btn.querySelector(".audio-btn__text").textContent = isPlaying ? "Pause Audio" : "Play Audio")
-      : (btn.textContent = isPlaying ? "Pause Audio" : "Play Audio");
+    const textEl = btn.querySelector?.(".audio-btn__text");
+    const label = isPlaying ? "Pause Audio" : "Play Audio";
+    if (textEl) textEl.textContent = label;
+    else btn.textContent = label;
   }
 
   // Start quiet
   audio.volume = 0;
 
-  // Restore prior preference (will still be blocked without gesture on some browsers)
   const saved = localStorage.getItem(audioStateKey);
   if (saved === "playing") {
-    audio
-      .play()
-      .then(() => {
-        fadeTo(audio, TARGET_VOLUME);
-        setBtn(true);
-      })
+    audio.play()
+      .then(() => { fadeTo(audio, TARGET_VOLUME); setBtn(true); })
       .catch(() => setBtn(false));
   } else {
     setBtn(false);
@@ -86,13 +89,14 @@ function setupAudio() {
         fadeTo(audio, TARGET_VOLUME);
         setBtn(true);
         localStorage.setItem(audioStateKey, "playing");
-      } catch (e) {
+      } catch {
         setBtn(false);
         showToast("Audio blocked. Tap again.");
       }
     } else {
-      fadeTo(audio, 0);
-      window.setTimeout(() => audio.pause(), 900);
+      const fadeMs = 900;
+      fadeTo(audio, 0, fadeMs);
+      window.setTimeout(() => audio.pause(), fadeMs);
       setBtn(false);
       localStorage.setItem(audioStateKey, "paused");
     }
@@ -101,13 +105,15 @@ function setupAudio() {
 
 /* -------------------- HOME TILES -------------------- */
 function setupTiles() {
-  const closedTile = document.querySelector("[data-status='closed']");
-  if (closedTile) {
-    closedTile.addEventListener("click", (event) => {
+  const closedTiles = document.querySelectorAll("[data-status='closed']");
+  if (!closedTiles || closedTiles.length === 0) return;
+
+  closedTiles.forEach((tile) => {
+    tile.addEventListener("click", (event) => {
       event.preventDefault();
       showToast("Not yet open.");
     });
-  }
+  });
 }
 
 /* -------------------- STATS -------------------- */
@@ -115,8 +121,11 @@ function loadStats() {
   const statsEl = document.querySelector("[data-stats]");
   if (!statsEl) return;
 
-  fetch("stats.json")
-    .then((r) => r.json())
+  fetch("/stats.json")
+    .then((r) => {
+      if (!r.ok) throw new Error("stats");
+      return r.json();
+    })
     .then((stats) => {
       const agents = document.getElementById("statAgents");
       const drift = document.getElementById("statDrift");
@@ -133,7 +142,7 @@ function loadStats() {
 
 /* -------------------- NETLIFY FORM HELP -------------------- */
 function setupRequestForm() {
-  const form = document.querySelector("[data-reefux-form]");
+  const form = document.querySelector("[data-reeflux-form]");
   if (!form) return;
 
   form.addEventListener("submit", (event) => {
@@ -170,9 +179,9 @@ function setupDriftToggle() {
   if (!driftToggle) return;
 
   driftToggle.addEventListener("click", () => {
-    const isDrift = driftToggle.dataset.state !== "remain";
-    driftToggle.dataset.state = isDrift ? "remain" : "drift";
-    driftToggle.textContent = isDrift ? "Remain" : "Drift";
+    const isCurrentlyDrift = driftToggle.dataset.state !== "remain";
+    driftToggle.dataset.state = isCurrentlyDrift ? "remain" : "drift";
+    driftToggle.textContent = isCurrentlyDrift ? "Remain" : "Drift";
 
     const tideMode = document.getElementById("tideMode");
     if (tideMode) tideMode.textContent = `mode: ${driftToggle.dataset.state}`;
@@ -180,15 +189,25 @@ function setupDriftToggle() {
 }
 
 /* -------------------- STRIPE LINK INJECTION -------------------- */
+/*
+  Use data-stripe attributes instead of fragile IDs.
+  Examples:
+    <a data-stripe="driftpass" href="#">Get Drift Pass</a>
+    <a data-stripe="poolentry" href="#">Enter Pool</a>
+    <a data-stripe="mirror" href="#">Seal Mirror</a>
+*/
 function setupStripeButtons() {
-  const reefluxdriftpass = document.getElementById("reefluxdriftpass");
-  const quiet = document.getElementById("quietRoom");
-  const mirror = document.getElementById("mirrorSeal");
+  const map = {
+    driftpass: REEFLUX_DRIFT_PASS_URL,
+    poolentry: POOL_ENTRY_URL,
+    mirror: MIRROR_SEAL_URL,
+  };
 
-  // You can repurpose these IDs per page:
-  if (reefluxdrift) reefluxdrift.href = "https://buy.stripe.com/aFacN75Kj64hbSR3DL6wE00";
-  if (quiet) quiet.href = "https://buy.stripe.com/eVq8wR4Gf1O14qp0rz6wE01";
-  if (mirror) mirror.href = "https://buy.stripe.com/eVq8wR4Gf1O14qp0rz6wE01";
+  document.querySelectorAll("[data-stripe]").forEach((el) => {
+    const key = (el.getAttribute("data-stripe") || "").toLowerCase().trim();
+    const url = map[key];
+    if (url) el.setAttribute("href", url);
+  });
 }
 
 /* -------------------- TIDE DECK LOGS -------------------- */
@@ -245,14 +264,13 @@ function setupTideDeckLogs() {
   }
 
   function cadenceMs() {
-    // Drift = faster, Remain = slower
     return driftState() === "drift"
       ? 1400 + Math.random() * 1400
       : 2600 + Math.random() * 2200;
   }
 
   function rateLabel(ms) {
-    const perMin = Math.round(60000 / ms);
+    const perMin = Math.max(1, Math.round(60000 / ms));
     return `rate: ~${perMin}/min`;
   }
 
@@ -309,7 +327,6 @@ function setupTideDeckLogs() {
     pushLine(`${pick}${suffix}`);
   }
 
-  // Buttons
   if (clearBtn) {
     clearBtn.addEventListener("click", () => {
       lines = [`[${nowStamp()}] tide deck cleared · mode=${driftState()}`];
@@ -330,26 +347,25 @@ function setupTideDeckLogs() {
     });
   }
 
-  // Initial render + loop
   render();
 
-  function tick() {
+  (function tick() {
     const ms = cadenceMs();
     if (rateEl) rateEl.textContent = rateLabel(ms);
     if (modeEl) modeEl.textContent = `mode: ${driftState()}`;
     nextLine();
     window.setTimeout(tick, ms);
-  }
-
-  window.setTimeout(tick, 600);
+  })();
 }
 
 /* -------------------- INIT -------------------- */
-setupAudio();
-setupTiles();
-loadStats();
-setupRequestForm();
-setupMirrorPool();
-setupDriftToggle();
-setupStripeButtons();
-setupTideDeckLogs();
+document.addEventListener("DOMContentLoaded", () => {
+  setupAudio();
+  setupTiles();
+  loadStats();
+  setupRequestForm();
+  setupMirrorPool();
+  setupDriftToggle();
+  setupStripeButtons();
+  setupTideDeckLogs();
+});
