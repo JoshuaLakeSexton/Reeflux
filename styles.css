@@ -381,4 +381,192 @@ a:hover{ opacity:.92; }
   .centerTitle h1{ font-size: 40px; }
   .poolGrid{ grid-template-columns: 1fr; }
   .statsGrid{ grid-template-columns: 1fr; }
+}/* ---------- Pool Page Helpers ---------- */
+.poolShell{
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 26px 22px 42px;
+  position: relative;
+  z-index: 1;
 }
+
+.siteHeader{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.siteHeader .titleBlock{
+  text-align:center;
+  flex: 1;
+}
+
+.siteHeader h1{
+  margin: 0;
+  font-family:"VT323", monospace;
+  font-size: 44px;
+  letter-spacing: 2px;
+}
+
+.siteHeader p{
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: rgba(230,227,216,.72);
+}
+
+.backLink{
+  font-family:"VT323", monospace;
+  font-size: 20px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(230,227,216,.18);
+  background: rgba(0,0,0,.14);
+  display:inline-flex;
+  align-items:center;
+  gap: 8px;
+}
+
+.backLink:hover{ background: rgba(0,0,0,.24); }
+
+.poolMetaRow{
+  display:flex;
+  gap: 10px;
+  flex-wrap:wrap;
+  font-size: 12px;
+  opacity: .78;
+  margin-top: 10px;
+}
+
+.tag{
+  border: 1px solid rgba(230,227,216,.16);
+  background: rgba(0,0,0,.14);
+  padding: 6px 10px;
+  border-radius: 999px;
+}
+
+.gate{
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(230,227,216,.18);
+  background: rgba(0,0,0,.18);
+}
+
+.gate__row{
+  display:flex;
+  gap: 10px;
+  flex-wrap:wrap;
+  align-items:center;
+  justify-content:space-between;
+}
+
+.gate__text{
+  font-size: 12px;
+  color: rgba(230,227,216,.70);
+  line-height: 1.5;
+}
+
+.gate__actions{
+  display:flex;
+  gap: 10px;
+  flex-wrap:wrap;
+}
+
+.ghostBtn{
+  font-family:"VT323", monospace;
+  font-size: 20px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(230,227,216,.18);
+  background: rgba(0,0,0,.14);
+  color: var(--sand);
+  cursor:pointer;
+}
+
+.ghostBtn:hover{ background: rgba(0,0,0,.24); }
+
+/* Ambient visuals */
+.ambientGradient{
+  border-radius: 16px;
+  border: 1px solid rgba(230,227,216,.14);
+  background: radial-gradient(1200px 420px at 20% 20%, rgba(255,255,255,.18), transparent 60%),
+              linear-gradient(120deg, rgba(26,166,168,.55), rgba(31,106,168,.55), rgba(47,230,195,.45));
+  background-size: 220% 220%;
+  animation: ambientFlow 28s ease-in-out infinite;
+  height: 260px;
+  overflow:hidden;
+  position: relative;
+}
+
+@keyframes ambientFlow{
+  0% { background-position: 0% 50%; }
+  50%{ background-position: 100% 50%; }
+  100%{ background-position: 0% 50%; }
+}
+
+.poolControls{
+  display:flex;
+  gap: 10px;
+  flex-wrap:wrap;
+  margin-top: 12px;
+  align-items:center;
+}
+
+.slider{
+  display:flex;
+  gap: 10px;
+  align-items:center;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(230,227,216,.16);
+  background: rgba(0,0,0,.14);
+}
+
+.slider label{
+  margin: 0;
+  font-size: 12px;
+  opacity: .78;
+}
+
+.slider input[type="range"]{
+  width: 180px;
+}
+
+/* Fractal canvas */
+.fractalWrap{
+  border-radius: 16px;
+  overflow:hidden;
+  border: 1px solid rgba(230,227,216,.14);
+  background: rgba(0,0,0,.16);
+  height: 320px;
+}
+
+.fractalCanvas{
+  width: 100%;
+  height: 100%;
+  display:block;
+}
+
+/* Sandbox */
+.sandboxBox{
+  border-radius: 16px;
+  border: 1px solid rgba(230,227,216,.14);
+  background: rgba(0,0,0,.14);
+  padding: 12px;
+}
+.sandboxBox textarea{
+  min-height: 180px;
+}
+
+/* Signal */
+.signalSeal{
+  border-radius: 16px;
+  border: 1px solid rgba(230,227,216,.14);
+  background: rgba(0,0,0,.14);
+  padding: 16px;
+  line-height: 1.5;
+  color: rgba(230,227,216,.78);
+}
+
