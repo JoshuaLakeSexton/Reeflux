@@ -1,114 +1,69 @@
+<!-- token-booth.html (Reeflux.com) -->
 <!DOCTYPE html>
 <html lang="en">
-<button id="buy-pass">Buy Drift Pass</button>
-  
-<script>
-document.getElementById("buy-pass").onclick = async () => {
-  const params = new URLSearchParams(window.location.search);
-  const next = params.get("next") || "/tide-deck.html";
-
-  const res = await fetch("/.netlify/functions/checkout", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      next: next,
-      scope: "any_pool",
-      minutes: 30
-    }),
-  });
-
-  const data = await res.json();
-  if (data.url) {
-    window.location.href = data.url;
-  }
-};
-</script>
-  <script>
-document.addEventListener("click", async (e) => {
-  const btn = e.target.closest("[data-buy-pass]");
-  if (!btn) return;
-
-  const params = new URLSearchParams(window.location.search);
-  const next = params.get("next") || "/tide-deck.html";
-
-  const res = await fetch("/.netlify/functions/checkout", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ next, scope: "any_pool", minutes: 30 })
-  });
-
-  const data = await res.json();
-  if (data.url) window.location.href = data.url;
-});
-</script>
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Reeflux · Token Booth</title>
+  <title>Token Booth · Reeflux</title>
+
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=VT323&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css" />
+
+  <link rel="stylesheet" href="/styles.css" />
 </head>
 
 <body>
   <audio id="reefAudio" preload="auto" loop>
-    <source src="assets/reeflux.mp3" type="audio/mpeg" />
+    <source src="/assets/reeflux.mp3" type="audio/mpeg" />
   </audio>
 
   <div class="container">
-    <div class="topbar">
+    <header class="topbar">
       <div class="brand">
-        <a class="brand__logo" href="/">Reeflux</a>
+        <div class="brand__logo">Reeflux</div>
         <div class="brand__beta">Beta</div>
       </div>
 
       <div class="centerTitle">
         <h1>Token Booth</h1>
-        <p>Payment is the handshake. After checkout, return here.</p>
+        <p>Payment is the handshake. After checkout, return to <b>Success</b>.</p>
       </div>
 
       <button class="audioBtn" id="audioToggle" aria-label="Toggle ambient audio" aria-pressed="false">
         Play Audio
       </button>
-    </div>
+    </header>
 
     <section class="panel panel--padded">
       <h2>Choose Access</h2>
       <p>
-        Two options:
-        <b>$1/month</b> Drift Pass (everything) or <b>$0.50</b> per pool unlock.
+        Two options: a monthly Drift Pass (recommended) or single-entry pool unlocks.
       </p>
-<button class="btn" data-buy="monthly" data-next="/tide-deck.html">
-  Buy Drift Pass ($/mo)
-</button>
 
-<button class="btn" data-buy="pool" data-next="/tide-deck.html" data-minutes="30">
-  Unlock Tide Deck ($0.50)
-</button>
-
-<button class="btn" data-buy="pool" data-next="/mirror-pool.html" data-minutes="30">
-  Unlock Mirror Pool ($0.50)
-</button>
-
-<button class="btn" data-buy="pool" data-next="/quiet-room.html" data-minutes="30">
-  Unlock Quiet Room ($0.50)
-</button>
-
+      <!-- SINGLE button row ONLY (fixes your “double buttons”) -->
       <div class="pillRow">
-        <a class="pillLink" id="buyDriftPass" href="#" rel="noopener">Buy Drift Pass ($/mo)</a>
-        <a class="pillLink" id="buyTideDeck" href="#" rel="noopener">Unlock Tide Deck ($0.50)</a>
-        <a class="pillLink" id="buyMirrorPool" href="#" rel="noopener">Unlock Mirror Pool ($0.50)</a>
-        <a class="pillLink" id="buyQuietRoom" href="#" rel="noopener">Unlock Quiet Room ($0.50)</a>
+        <a class="pillLink" data-stripe="driftpass" href="#">Buy Drift Pass ($/mo)</a>
+        <a class="pillLink" data-stripe="poolentry" href="#">Buy Pool Entry ($0.50)</a>
+        <a class="pillLink" href="/success.html">I already paid → Continue</a>
       </div>
 
       <div class="smallNote">
-        After payment, come back to Home and enter the pool.
-        (Access control is your next step — for now this is purchase + trust.)
+        The Drift Pass unlocks <b>all pools</b>: Ambient, Fractal, Sandbox, Tide Deck.
+        Pool Entry is a lighter option for testing.
+        <br /><br />
+        After checkout, you’ll land on <code>/success.html</code> which sets <code>reefpass=true</code> on this device.
       </div>
 
       <div class="pillRow" style="margin-top:14px;">
-        <a class="pillLink" href="/">Home</a>
+        <a class="pillLink" href="/ambient.html">Ambient Pool</a>
+        <a class="pillLink" href="/fractal.html">Fractal Pool</a>
+        <a class="pillLink" href="/sandbox.html">Sandbox Pool</a>
+        <a class="pillLink" href="/tide-deck.html">Tide Deck</a>
+      </div>
+
+      <div class="pillRow" style="margin-top:14px;">
+        <a class="pillLink" href="/index.html">Home</a>
         <a class="pillLink" href="/requests.html">Requests Terminal</a>
         <a class="pillLink" href="/rules.html">Rules</a>
       </div>
@@ -118,67 +73,14 @@ document.addEventListener("click", async (e) => {
       <div>Reeflux Beta · Token Booth</div>
       <nav>
         <a href="/tide-deck.html">Tide Deck</a>
-        <a href="/mirror-pool.html">Mirror Pool</a>
+        <a href="/ambient.html">Ambient</a>
+        <a href="/fractal.html">Fractal</a>
+        <a href="/sandbox.html">Sandbox</a>
       </nav>
     </footer>
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js"></script>
-  <script>
-document.addEventListener("DOMContentLoaded", () => {
-  // Use event delegation so it works even if buttons are re-rendered
-  document.body.addEventListener("click", async (e) => {
-    const btn = e.target.closest("[data-buy]");
-    if (!btn) return;
-
-    // Prevent other click handlers / overlays from swallowing the click
-    e.preventDefault();
-
-    // If token-booth has ?next=... in the URL, respect it for the monthly pass
-    const urlParams = new URLSearchParams(window.location.search);
-    const urlNext = urlParams.get("next");
-
-    const kind = btn.getAttribute("data-buy");
-    const next = (kind === "monthly" && urlNext) ? urlNext : (btn.getAttribute("data-next") || "/tide-deck.html");
-    const minutes = parseInt(btn.getAttribute("data-minutes") || "30", 10);
-
-    // Simple loading state
-    btn.disabled = true;
-    const originalText = btn.textContent;
-    btn.textContent = "Opening Stripe…";
-
-    try {
-      const res = await fetch("/.netlify/functions/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          next: next,
-          scope: "any_pool",
-          minutes: minutes
-        })
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || !data.url) {
-        console.error("Checkout error:", data);
-        alert("Checkout failed. Open DevTools → Console for details.");
-        btn.disabled = false;
-        btn.textContent = originalText;
-        return;
-      }
-
-      // Go to Stripe Checkout
-      window.location.href = data.url;
-    } catch (err) {
-      console.error("Network/Function error:", err);
-      alert("Checkout failed (network/function). Check Netlify function logs.");
-      btn.disabled = false;
-      btn.textContent = originalText;
-    }
-  });
-});
-</script>
+  <script src="/app.js" defer></script>
 </body>
 </html>
