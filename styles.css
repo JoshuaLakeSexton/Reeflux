@@ -608,4 +608,30 @@ a:hover{ opacity:.92; }
   50%  { opacity: .16; transform: scale(1.015); }
   100% { opacity: .04; transform: scale(1); }
 }
+/* ---------- Fractal Focus Mode ---------- */
+body.fractal-focus .siteHeader,
+body.fractal-focus footer,
+body.fractal-focus #fractalControls,
+body.fractal-focus .poolMetaRow,
+body.fractal-focus h2,
+body.fractal-focus p,
+body.fractal-focus .gate{
+  display: none !important;
+}
+
+body.fractal-focus .panel{
+  padding: 0;
+  background: rgba(0,0,0,.12);
+  border: 1px solid rgba(230,227,216,.10);
+}
+
+body.fractal-focus .fractalWrap{
+  height: calc(100vh - 60px);
+  border-radius: 16px;
+}
+
+body.fractal-focus .toast{
+  bottom: 16px;
+  right: 16px;
+}
 
