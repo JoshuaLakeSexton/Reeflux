@@ -551,7 +551,10 @@ function setupPoolGate() {
     } catch {}
   };
 }
-/* -------------------- INIT -------------------- */
+/* ====== THEN CALL IT IN INIT ======
+   Inside your DOMContentLoaded init block, add setupPoolGate()
+*/
+
 document.addEventListener("DOMContentLoaded", () => {
   setupAudio();
   setupTiles();
@@ -560,6 +563,10 @@ document.addEventListener("DOMContentLoaded", () => {
   setupMirrorPool();
   setupDriftToggle();
   setupStripeButtons();
+
+  // Gate must run BEFORE pool setup so expensive pool rendering doesn't run while locked
+  setupPoolGate();
+
   setupTideDeckLogs();
   setupAmbientPool();
   setupFractalPool();
