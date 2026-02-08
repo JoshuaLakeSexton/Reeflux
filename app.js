@@ -500,8 +500,57 @@ function setupSignalPool() {
     });
   }
 }
+/* ====== ADD THIS TO app.js ======
+   Soft gate: hides pool content unless reefpass=true is present in localStorage.
 
+   How it works:
+   - On pool pages, wrap the real pool UI in: <div data-pool-content> ... </div>
+   - Include a gate block anywhere: <div data-pool-gate> ... </div>
+   - This script will:
+       - If reefpass=true: show content, hide gate
+       - Else: hide content, show gate
+*/
 
+function setupPoolGate() {
+  // Only run on pool pages that declare a pool
+  const poolName = document.body?.getAttribute("data-pool");
+  if (!poolName) return;
+
+  const content = document.querySelector("[data-pool-content]");
+  const gate = document.querySelector("[data-pool-gate]");
+
+  // If dev forgot wrappers, do nothing (prevents breaking pages)
+  if (!content && !gate) return;
+
+  let hasPass = false;
+  try {
+    hasPass = localStorage.getItem("reefpass") === "true";
+  } catch {
+    hasPass = false;
+  }
+
+  // Default visibility
+  if (content) content.hidden = !hasPass;
+  if (gate) gate.hidden = hasPass;
+
+  // Optional: add a helpful toast when blocked
+  if (!hasPass && gate) {
+    // avoid spamming toast on refresh loops
+    if (!window.__reefluxGateToastShown) {
+      window.__reefluxGateToastShown = true;
+      showToast("Pool sealed. Pass required.");
+    }
+  }
+
+  // Optional: allow manual re-check (e.g., after returning from Stripe)
+  window.__reefluxRecheckGate = function recheckGate() {
+    try {
+      const ok = localStorage.getItem("reefpass") === "true";
+      if (content) content.hidden = !ok;
+      if (gate) gate.hidden = ok;
+    } catch {}
+  };
+}
 /* -------------------- INIT -------------------- */
 document.addEventListener("DOMContentLoaded", () => {
   setupAudio();
