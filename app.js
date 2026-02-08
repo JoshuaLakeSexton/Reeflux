@@ -788,6 +788,56 @@ function setupPoolGate() {
     } catch {}
   };
 }
+
+function loadStats() {
+  const statsEl = document.querySelector("[data-stats]");
+  if (!statsEl) return;
+
+  fetch("/.netlify/functions/stats")
+    .then((r) => r.json())
+    .then((stats) => {
+      const agents = document.getElementById("statAgents");
+      const drift = document.getElementById("statDrift");
+      const queue = document.getElementById("statQueue");
+      const updated = document.getElementById("statUpdated");
+
+      if (agents) agents.textContent = stats.agents_inside ?? "--";
+      if (drift) drift.textContent = stats.current_drift ?? "--";
+      if (queue) queue.textContent = stats.requests_queue ?? "--";
+      if (updated) updated.textContent = `Last updated: ${stats.last_updated ?? "--"}`;
+    })
+    .catch(() => showToast("Stats offline."));
+}
+
+function setupHeartbeat() {
+  // stable per-browser session id
+  const key = "reef_session_id";
+  let id = "";
+  try {
+    id = localStorage.getItem(key) || "";
+    if (!id) {
+      id = (crypto?.randomUUID?.() || String(Math.random()).slice(2)) + "-" + Date.now();
+      localStorage.setItem(key, id);
+    }
+  } catch {
+    id = String(Math.random()).slice(2) + "-" + Date.now();
+  }
+
+  function ping() {
+    // drift can be your local mode/slider if you want; keep simple for now:
+    const drift = 0;
+
+    fetch("/.netlify/functions/ping", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId: id, drift }),
+    }).catch(() => {});
+  }
+
+  ping();
+  window.setInterval(ping, 45_000); // every 45s
+}
+
 /* ====== THEN CALL IT IN INIT ======
    Inside your DOMContentLoaded init block, add setupPoolGate()
 */
@@ -796,6 +846,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupAudio();
   setupTiles();
   loadStats();
+  setupHeartbeat();
   setupRequestForm();
   setupMirrorPool();
   setupDriftToggle();
