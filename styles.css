@@ -1,20 +1,19 @@
+/* styles.css (Reeflux.com) */
 :root{
-  /* pulled to fit your reef background */
   --sand: #e6e3d8;
   --sand-muted: rgba(230,227,216,.78);
 
   --ink: rgba(7, 12, 18, .72);
   --ink-2: rgba(7, 12, 18, .55);
 
-  --panel-alpha: .38;       /* <<< reduce this to lower the dark wash */
+  --panel-alpha: .38;
   --panel-border: rgba(230,227,216,.18);
-  --glow: rgba(120, 220, 255, .10);
   --shadow: rgba(0,0,0,.35);
 
   --radius-lg: 20px;
   --radius-md: 14px;
 
-  --pixel: 10px;            /* pixel size for the tile grid */
+  --pixel: 10px;
   --flowSpeed: 26s;
 }
 
@@ -28,17 +27,21 @@ body{
   color: var(--sand);
   font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
 
-  /* background image + subtle dark wash */
   background:
     linear-gradient(rgba(6,10,16,.20), rgba(6,10,16,.55)),
-    url("assets/reeflux_bg.png");
+    url("/assets/reeflux_bg.png");
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  background-attachment: fixed;
+  /* iOS Safari can jitter with fixed attachment; only enable on larger screens */
+  background-attachment: scroll;
 }
 
-/* a subtle grain so it feels “screen-like” */
+@media (min-width: 981px){
+  body{ background-attachment: fixed; }
+}
+
+/* subtle grain */
 body::before{
   content:"";
   position:fixed;
@@ -51,7 +54,7 @@ body::before{
 
 a{
   color: var(--sand);
-  text-decoration: none; /* no underline */
+  text-decoration: none;
 }
 
 a:hover{ opacity:.92; }
@@ -82,7 +85,7 @@ a:hover{ opacity:.92; }
 }
 
 .brand__logo{
-  font-size: 32px; /* smaller */
+  font-size: 32px;
   line-height: 1;
 }
 
@@ -130,13 +133,13 @@ a:hover{ opacity:.92; }
 .audioBtn:hover{ background: rgba(0,0,0,.26); }
 .audioBtn:active{ transform: translateY(1px); }
 
-/* ---------- Shared panel card ---------- */
+/* ---------- Panels ---------- */
 .panel{
-  background: rgba(6, 10, 16, var(--panel-alpha)); /* <<< opacity controlled */
+  background: rgba(6, 10, 16, var(--panel-alpha));
   border: 1px solid var(--panel-border);
   border-radius: var(--radius-lg);
   box-shadow: 0 18px 60px var(--shadow);
-  backdrop-filter: blur(5px); /* reduced blur */
+  backdrop-filter: blur(5px);
   -webkit-backdrop-filter: blur(5px);
 }
 
@@ -186,6 +189,37 @@ a:hover{ opacity:.92; }
   font-family: "Inter", system-ui, sans-serif;
 }
 
+/* ---------- Stats ---------- */
+.statsPanel{ margin-top: 16px; }
+.statsGrid{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 10px;
+}
+.stat{
+  border: 1px solid rgba(230,227,216,.14);
+  border-radius: 14px;
+  padding: 12px;
+  background: rgba(0,0,0,.14);
+}
+.stat__label{
+  font-size: 12px;
+  color: rgba(230,227,216,.70);
+  margin-bottom: 6px;
+}
+.stat__value{
+  font-family:"VT323", monospace;
+  font-size: 28px;
+  letter-spacing: 1px;
+  color: rgba(230,227,216,.92);
+}
+.stat__updated{
+  margin-top: 10px;
+  font-size: 12px;
+  color: rgba(230,227,216,.62);
+}
+
 /* ---------- Pool tiles grid ---------- */
 .poolGrid{
   display:grid;
@@ -223,13 +257,9 @@ a:hover{ opacity:.92; }
   inset:0;
   z-index: 1;
 
-  /* The “pixel look”: a subtle grid over a moving gradient */
   background:
-    /* pixel grid */
     linear-gradient(90deg, rgba(0,0,0,.14) 1px, transparent 1px) 0 0 / var(--pixel) var(--pixel),
     linear-gradient(0deg, rgba(0,0,0,.14) 1px, transparent 1px) 0 0 / var(--pixel) var(--pixel),
-
-    /* moving “water” gradient */
     radial-gradient(1200px 380px at 15% 20%, rgba(255,255,255,.22), transparent 55%),
     linear-gradient(120deg, var(--c1), var(--c2), var(--c3), var(--c1));
 
@@ -289,7 +319,6 @@ a:hover{ opacity:.92; }
   cursor: default;
   filter: grayscale(.10) brightness(.92);
 }
-
 .poolTile--locked .poolTile__status{ color: rgba(230,227,216,.72); }
 .poolTile--locked:hover{ transform:none; }
 
@@ -297,47 +326,7 @@ a:hover{ opacity:.92; }
   cursor: not-allowed;
   filter: grayscale(.28) brightness(.80);
 }
-
 .poolTile--closed:hover{ transform:none; }
-
-/* ---------- Forms / inputs ---------- */
-.form{
-  display:grid;
-  gap: 12px;
-  max-width: 560px;
-  margin-top: 10px;
-}
-
-label{
-  font-size: 13px;
-  color: rgba(230,227,216,.75);
-}
-
-input, select, textarea{
-  width:100%;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(230,227,216,.18);
-  background: rgba(0,0,0,.22);
-  color: var(--sand);
-  outline: none;
-}
-
-textarea{ min-height: 120px; resize: vertical; }
-
-.primaryBtn{
-  font-family:"VT323", monospace;
-  font-size: 22px;
-  padding: 10px 14px;
-  border-radius: 12px;
-  border: 1px solid rgba(120, 220, 255, .55);
-  background: rgba(0,0,0,.22);
-  color: var(--sand);
-  cursor:pointer;
-  justify-self:start;
-}
-
-.primaryBtn:hover{ background: rgba(0,0,0,.30); }
 
 /* ---------- Footer ---------- */
 .footer{
@@ -387,172 +376,9 @@ textarea{ min-height: 120px; resize: vertical; }
   transform: translateY(0);
 }
 
+/* ---------- Mobile ---------- */
 @media (max-width: 980px){
   .centerTitle h1{ font-size: 40px; }
   .poolGrid{ grid-template-columns: 1fr; }
-}
-/* ---------- Tide Deck UI ---------- */
-.site-header {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 18px;
-}
-
-.brand--small .brand__name {
-  font-family: "VT323", monospace;
-  font-size: 26px;
-  letter-spacing: 2px;
-}
-
-.header-center {
-  text-align: center;
-  opacity: 0.92;
-}
-
-.page-title {
-  font-family: "VT323", monospace;
-  letter-spacing: 2px;
-  font-size: 28px;
-}
-
-.page-subtitle {
-  font-size: 12px;
-  opacity: 0.72;
-}
-
-.page-grid {
-  display: grid;
-  grid-template-columns: 1.6fr 1fr;
-  gap: 16px;
-}
-
-@media (max-width: 980px) {
-  .page-grid {
-    grid-template-columns: 1fr;
-  }
-  .site-header {
-    grid-template-columns: 1fr;
-    text-align: left;
-  }
-  .header-center {
-    text-align: left;
-  }
-}
-
-.panel {
-  background: rgba(8, 18, 20, 0.42);
-  border: 1px solid rgba(230, 227, 216, 0.22);
-  border-radius: 16px;
-  padding: 18px;
-  backdrop-filter: blur(6px);
-}
-
-.panel--side {
-  background: rgba(8, 18, 20, 0.30);
-  backdrop-filter: blur(5px);
-}
-
-.panel__title {
-  font-family: "VT323", monospace;
-  letter-spacing: 2px;
-  font-size: 26px;
-  margin: 0 0 8px;
-}
-
-.panel__text {
-  margin: 0 0 14px;
-  opacity: 0.86;
-  line-height: 1.5;
-}
-
-.panel__list {
-  margin: 0 0 14px;
-  padding-left: 18px;
-  opacity: 0.86;
-}
-
-.deck-controls {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-bottom: 12px;
-}
-
-.terminal-button--ghost {
-  opacity: 0.86;
-}
-
-.tide-terminal {
-  border-radius: 14px;
-  overflow: hidden;
-  border: 1px solid rgba(230, 227, 216, 0.18);
-  background: rgba(0, 0, 0, 0.20);
-}
-
-.tide-terminal__bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 10px 12px;
-  border-bottom: 1px solid rgba(230, 227, 216, 0.16);
-  background: rgba(8, 18, 20, 0.34);
-}
-
-.tide-terminal__label {
-  font-family: "VT323", monospace;
-  letter-spacing: 2px;
-  font-size: 18px;
-  opacity: 0.92;
-}
-
-.tide-terminal__meta {
-  font-size: 12px;
-  opacity: 0.7;
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.tide-terminal__screen {
-  margin: 0;
-  padding: 12px;
-  height: 320px;
-  overflow: auto;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-  font-size: 12px;
-  line-height: 1.45;
-  opacity: 0.95;
-  white-space: pre-wrap;
-}
-
-.mini-nav {
-  display: flex;
-  gap: 14px;
-  flex-wrap: wrap;
-  margin-top: 12px;
-}
-
-.mini-nav__link {
-  font-family: "VT323", monospace;
-  letter-spacing: 1px;
-  font-size: 18px;
-  text-decoration: none;
-  opacity: 0.88;
-}
-
-.mini-nav__link:hover {
-  opacity: 1;
-}
-
-.site-footer {
-  margin-top: 16px;
-  padding: 12px 2px 2px;
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  opacity: 0.7;
-  font-size: 12px;
+  .statsGrid{ grid-template-columns: 1fr; }
 }
