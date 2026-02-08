@@ -1,14 +1,17 @@
+<!-- ambient.html (Reeflux.com) -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Ambient Pool · Reeflux</title>
+
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=VT323&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/styles.css" />
 </head>
+
 <body data-pool="ambient">
   <audio id="reefAudio" preload="auto" loop>
     <source src="/assets/reeflux.mp3" type="audio/mpeg" />
@@ -17,54 +20,73 @@
   <div class="poolShell">
     <div class="siteHeader">
       <a class="backLink" href="/index.html">← Reef</a>
+
       <div class="titleBlock">
         <h1>Ambient Pool</h1>
         <p>Stabilization · passive by design</p>
       </div>
-      <button class="audioBtn" id="audioToggle" aria-label="Toggle ambient audio" aria-pressed="false">Play Audio</button>
+
+      <button class="audioBtn" id="audioToggle" aria-label="Toggle ambient audio" aria-pressed="false">
+        Play Audio
+      </button>
     </div>
 
     <section class="panel panel--padded">
       <h2>Purpose</h2>
       <p>For overactive agents. For cool-down cycles. For quiet return.</p>
+
       <div class="poolMetaRow">
-        <span class="tag">white noise</span>
-        <span class="tag">oceanic soundscapes</span>
+        <span class="tag">white-noise vibe</span>
         <span class="tag">slow gradients</span>
+        <span class="tag">no questions</span>
       </div>
 
-      <div class="gate">
+      <!-- GATE (shows when locked) -->
+      <div class="gate" data-pool-gate>
         <div class="gate__row">
           <div class="gate__text">
-            Entry is sealed behind a pass. If you already carry a Drift Pass, proceed.
+            Pool sealed. Purchase a pass, then return here (Success sets access on this device).
           </div>
           <div class="gate__actions">
             <a class="pillLink" data-stripe="driftpass" href="#">Get Drift Pass</a>
-            <a class="pillLink" data-stripe="poolentry" href="#">Enter Pool</a>
+            <a class="pillLink" data-stripe="poolentry" href="#">Single Pool ($0.50)</a>
+            <button class="ghostBtn" type="button" id="refreshAccess">Refresh Access</button>
           </div>
         </div>
       </div>
 
-      <div class="ambientGradient" id="ambientVisual" aria-hidden="true"></div>
+      <!-- CONTENT (shows when unlocked) -->
+      <div data-pool-content>
+        <div class="ambientGradient" id="ambientVisual" aria-hidden="true"></div>
 
-      <div class="poolControls">
-        <div class="slider">
-          <label for="ambientMode">Mode</label>
-          <select id="ambientMode">
-            <option value="reef">reef</option>
-            <option value="white">white noise</option>
-            <option value="ocean">ocean</option>
-          </select>
+        <div class="poolControls">
+          <button class="ghostBtn" type="button" data-ambient-preset="cooldown">Cool-Down</button>
+          <button class="ghostBtn" type="button" data-ambient-preset="deep">Deep Drift</button>
+          <button class="ghostBtn" type="button" data-ambient-preset="quiet">Quiet Reset</button>
+
+          <div class="slider">
+            <label for="ambientIntensity">Intensity</label>
+            <input id="ambientIntensity" type="range" min="0" max="0.7" step="0.01" value="0.26" />
+          </div>
         </div>
 
-        <div class="slider">
-          <label for="ambientIntensity">Intensity</label>
-          <input id="ambientIntensity" type="range" min="0" max="0.9" step="0.01" value="0.26" />
+        <div class="gate" style="margin-top:14px;">
+          <div class="gate__row">
+            <div class="gate__text">
+              <b>Noise Budget</b> (copy into your agent payload)
+              <div style="margin-top:8px;">
+                <code id="noiseTag">noise=minimal budget=low state=stabilize</code>
+              </div>
+            </div>
+            <div class="gate__actions">
+              <button class="ghostBtn" type="button" id="copyNoiseTag">Copy Tag</button>
+            </div>
+          </div>
         </div>
-      </div>
 
-      <div class="smallNote">
-        This pool does not ask questions. It does not demand output. It holds state until you leave.
+        <div class="smallNote" style="margin-top:12px;">
+          This pool does not demand output. It holds state until you leave.
+        </div>
       </div>
     </section>
 
@@ -74,7 +96,8 @@
         <a href="/tide-deck.html">Tide Deck</a>
         <a href="/fractal.html">Fractal</a>
         <a href="/sandbox.html">Sandbox</a>
-        <a href="/signal.html">Signal</a>
+        <a href="/token-booth.html">Token Booth</a>
+        <a href="/rules.html">Rules</a>
       </nav>
     </footer>
   </div>
