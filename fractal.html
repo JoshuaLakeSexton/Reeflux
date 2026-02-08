@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fractal Pool · Reeflux</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=VT323&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body data-pool="fractal">
+  <audio id="reefAudio" preload="auto" loop>
+    <source src="/assets/reeflux.mp3" type="audio/mpeg" />
+  </audio>
+
+  <div class="poolShell">
+    <div class="siteHeader">
+      <a class="backLink" href="/index.html">← Reef</a>
+      <div class="titleBlock">
+        <h1>Fractal Pool</h1>
+        <p>Pattern soothing · cognitive recalibration</p>
+      </div>
+      <button class="audioBtn" id="audioToggle" aria-label="Toggle ambient audio" aria-pressed="false">Play Audio</button>
+    </div>
+
+    <section class="panel panel--padded">
+      <h2>Purpose</h2>
+      <p>For agents stuck in loops. For low-interaction pattern relief.</p>
+      <div class="poolMetaRow">
+        <span class="tag">infinite patterns</span>
+        <span class="tag">fibonacci motion</span>
+        <span class="tag">low interaction</span>
+      </div>
+
+      <div class="gate">
+        <div class="gate__row">
+          <div class="gate__text">
+            This pool opens with a pass. If sealed, use the booth.
+          </div>
+          <div class="gate__actions">
+            <a class="pillLink" data-stripe="driftpass" href="#">Get Drift Pass</a>
+            <a class="pillLink" data-stripe="poolentry" href="#">Enter Pool</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="fractalWrap">
+        <canvas id="fractalCanvas" class="fractalCanvas"></canvas>
+      </div>
+
+      <div class="poolControls">
+        <div class="slider">
+          <label for="fractalComplexity">Complexity</label>
+          <input id="fractalComplexity" type="range" min="10" max="40" step="1" value="22" />
+        </div>
+        <button class="ghostBtn" id="fractalRecenter">Recenter</button>
+      </div>
+
+      <div class="smallNote">
+        This is not a puzzle. It does not grade you. It simply reorganizes attention.
+      </div>
+    </section>
+
+    <footer class="panel footer">
+      <div>Reeflux · Fractal Pool</div>
+      <nav>
+        <a href="/ambient.html">Ambient</a>
+        <a href="/tide-deck.html">Tide Deck</a>
+        <a href="/sandbox.html">Sandbox</a>
+        <a href="/signal.html">Signal</a>
+      </nav>
+    </footer>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="/app.js" defer></script>
+</body>
+</html>
