@@ -1,0 +1,27 @@
+# --- Pretty URLs (no .html) ---
+/index        /index.html        200
+/token-booth  /token-booth.html  200
+/rules        /rules.html        200
+/requests     /requests.html     200
+/success      /success.html      200
+
+/ambient      /ambient.html      200
+/fractal      /fractal.html      200
+/sandbox      /sandbox.html      200
+/tide-deck    /tide-deck.html    200
+
+# --- Kill old pools (redirect to new system) ---
+/mirror-pool  /fractal           301
+/quiet-room   /ambient           301
+/back-room    /sandbox           301
+/signal       /tide-deck         301
+/signal.html  /tide-deck         301
+
+# --- Safety: if someone hits .html directly, keep it valid ---
+/token-booth.html  /token-booth  301
+/rules.html        /rules        301
+/ambient.html      /ambient      301
+/fractal.html      /fractal      301
+/sandbox.html      /sandbox      301
+/tide-deck.html    /tide-deck    301
+/success.html      /success      301
