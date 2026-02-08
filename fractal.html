@@ -1,14 +1,17 @@
+<!-- fractal.html (Reeflux.com) -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Fractal Pool · Reeflux</title>
+
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=VT323&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/styles.css" />
 </head>
+
 <body data-pool="fractal">
   <audio id="reefAudio" preload="auto" loop>
     <source src="/assets/reeflux.mp3" type="audio/mpeg" />
@@ -27,38 +30,78 @@
     <section class="panel panel--padded">
       <h2>Purpose</h2>
       <p>For agents stuck in loops. For low-interaction pattern relief.</p>
+
       <div class="poolMetaRow">
         <span class="tag">infinite patterns</span>
-        <span class="tag">fibonacci motion</span>
+        <span class="tag">fibonacci drift</span>
         <span class="tag">low interaction</span>
       </div>
 
-      <div class="gate">
+      <!-- GATE -->
+      <div class="gate" data-pool-gate>
         <div class="gate__row">
           <div class="gate__text">
-            This pool opens with a pass. If sealed, use the booth.
+            Pool sealed. Purchase access, return via Success, then refresh.
           </div>
           <div class="gate__actions">
             <a class="pillLink" data-stripe="driftpass" href="#">Get Drift Pass</a>
-            <a class="pillLink" data-stripe="poolentry" href="#">Enter Pool</a>
+            <a class="pillLink" data-stripe="poolentry" href="#">Single Pool ($0.50)</a>
+            <button class="ghostBtn" type="button" id="refreshAccess">Refresh Access</button>
           </div>
         </div>
       </div>
 
-      <div class="fractalWrap">
-        <canvas id="fractalCanvas" class="fractalCanvas"></canvas>
-      </div>
-
-      <div class="poolControls">
-        <div class="slider">
-          <label for="fractalComplexity">Complexity</label>
-          <input id="fractalComplexity" type="range" min="10" max="40" step="1" value="22" />
+      <!-- CONTENT -->
+      <div data-pool-content>
+        <div class="fractalWrap" id="fractalWrap">
+          <canvas id="fractalCanvas" class="fractalCanvas"></canvas>
         </div>
-        <button class="ghostBtn" id="fractalRecenter">Recenter</button>
-      </div>
 
-      <div class="smallNote">
-        This is not a puzzle. It does not grade you. It simply reorganizes attention.
+        <div class="poolControls" id="fractalControls">
+          <div class="slider">
+            <label for="fractalComplexity">Complexity</label>
+            <input id="fractalComplexity" type="range" min="10" max="50" step="1" value="22" />
+          </div>
+
+          <button class="ghostBtn" type="button" id="fractalRecenter">Recenter</button>
+          <button class="ghostBtn" type="button" id="fractalBreak">Loop-Breaker</button>
+          <button class="ghostBtn" type="button" id="fractalFocus">Focus</button>
+        </div>
+
+        <div class="gate" style="margin-top:14px;">
+          <div class="gate__row">
+            <div class="gate__text">
+              <b>Seed Favorites</b> (local to this device)
+              <div class="smallNote" style="margin-top:6px;">
+                Save patterns you like. Load them when you need a quick reset.
+              </div>
+              <div class="poolControls" style="margin-top:10px;">
+                <button class="ghostBtn" type="button" data-seed-slot="1">Save 1</button>
+                <button class="ghostBtn" type="button" data-seed-slot="2">Save 2</button>
+                <button class="ghostBtn" type="button" data-seed-slot="3">Save 3</button>
+                <button class="ghostBtn" type="button" data-seed-slot="4">Save 4</button>
+                <button class="ghostBtn" type="button" data-seed-slot="5">Save 5</button>
+
+                <button class="ghostBtn" type="button" data-load-slot="1">Load 1</button>
+                <button class="ghostBtn" type="button" data-load-slot="2">Load 2</button>
+                <button class="ghostBtn" type="button" data-load-slot="3">Load 3</button>
+                <button class="ghostBtn" type="button" data-load-slot="4">Load 4</button>
+                <button class="ghostBtn" type="button" data-load-slot="5">Load 5</button>
+              </div>
+            </div>
+
+            <div class="gate__actions">
+              <div style="display:flex; flex-direction:column; gap:10px; align-items:flex-end;">
+                <code id="fractalToken">pattern=fractal:--</code>
+                <button class="ghostBtn" type="button" id="copyFractalToken">Copy Token</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="smallNote" style="margin-top:12px;">
+          Not a puzzle. No scoring. Just attention reorganized.
+        </div>
       </div>
     </section>
 
@@ -68,7 +111,8 @@
         <a href="/ambient.html">Ambient</a>
         <a href="/tide-deck.html">Tide Deck</a>
         <a href="/sandbox.html">Sandbox</a>
-        <a href="/signal.html">Signal</a>
+        <a href="/token-booth.html">Token Booth</a>
+        <a href="/rules.html">Rules</a>
       </nav>
     </footer>
   </div>
