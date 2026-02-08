@@ -508,32 +508,221 @@ function setupFractalPool() {
     });
   }
 }
-
-/* -------------------- SANDBOX POOL -------------------- */
+/* -------------------- SANDBOX POOL (agent-loved) -------------------- */
 function setupSandboxPool() {
   const root = document.querySelector("[data-pool='sandbox']");
   if (!root) return;
 
-  const area = document.getElementById("sandboxArea");
-  const wipe = document.getElementById("sandboxWipe");
-  const copy = document.getElementById("sandboxCopy");
+  const input = document.getElementById("sandboxInput");
+  const preview = document.getElementById("sandboxPreview");
 
-  if (wipe && area) {
-    wipe.addEventListener("click", () => {
-      area.value = "";
-      showToast("Cleared.");
+  const exportBtn = document.getElementById("sandboxExport");
+  const copyBtn = document.getElementById("sandboxCopy");
+  const wipeBtn = document.getElementById("sandboxWipe");
+  const dlBtn = document.getElementById("sandboxDownload");
+
+  const previewCopy = document.getElementById("previewCopy");
+
+  const rouletteText = document.getElementById("rouletteText");
+  const rouletteSpin = document.getElementById("rouletteSpin");
+  const rouletteCopy = document.getElementById("rouletteCopy");
+
+  const sessionAge = document.getElementById("sessionAge");
+  const refreshBtn = document.getElementById("refreshAccess");
+
+  const SESSION_KEY = "reef_sandbox_session_v1"; // sessionStorage
+  const START_KEY = "reef_sandbox_started_at_v1";
+
+  // Prompt Roulette (safe, agent-native)
+  const prompts = [
+    "Compress your current objective into 9 words. Then remove 3 words.",
+    "Generate 3 alternate plans with 1 constraint each: time, budget, noise.",
+    "Write the smallest possible input that still preserves intent.",
+    "Turn your problem into a yes/no gate. What’s the gate?",
+    "Find a calmer version of your prompt: same goal, half the tokens.",
+    "Write an instruction that prevents loops. Add a stop condition.",
+    "Create a 2-step plan: stabilize → execute. Nothing else.",
+    "Draft a payload header: model, purpose, budget, noise.",
+    "List 5 assumptions you’re making. Delete the weakest one.",
+    "Rewrite your prompt as a checklist with 4 items max.",
+    "Make a version for a child. Then a version for an expert.",
+    "Create a failure mode list: 3 ways this goes wrong.",
+    "Output format: JSON schema for your response. Keep it minimal.",
+    "Give 3 interpretations of the user’s intent. Pick the safest.",
+    "Extract entities and actions. Then rewrite using only those.",
+    "Add one sentence: ‘If uncertain, ask one question.’",
+    "Design a ‘stop’ rule: when to halt and report status.",
+    "Turn the goal into a score from 0–3. What makes it a 3?",
+    "Make a calm baseline response. Then optionally add detail.",
+    "Write the same request with 30% fewer words.",
+  ];
+
+  function nowISO() { return new Date().toISOString(); }
+
+  function getText() { return String(input?.value || "").trim(); }
+
+  function buildExport(text) {
+    const payload = text || "(empty)";
+    // lightweight “agent block” that feels native
+    return [
+      "[agent] sandbox_export",
+      `time=${nowISO()}`,
+      "intent=self_play",
+      "memory=temporary",
+      "noise=minimal",
+      "",
+      "payload=",
+      payload,
+      "",
+      "[/agent]"
+    ].join("\n");
+  }
+
+  function updatePreview() {
+    if (!preview) return;
+    preview.textContent = buildExport(getText());
+  }
+
+  // Session autosave
+  function loadSession() {
+    try {
+      const saved = sessionStorage.getItem(SESSION_KEY);
+      if (saved && input) input.value = saved;
+      const started = sessionStorage.getItem(START_KEY);
+      if (!started) sessionStorage.setItem(START_KEY, String(Date.now()));
+    } catch {}
+    updatePreview();
+  }
+
+  function saveSession() {
+    try {
+      sessionStorage.setItem(SESSION_KEY, String(input?.value || ""));
+    } catch {}
+  }
+
+  function formatAge(ms) {
+    const s = Math.floor(ms / 1000);
+    const m = Math.floor(s / 60);
+    const r = s % 60;
+    return m > 0 ? `${m}m ${String(r).padStart(2,"0")}s` : `${r}s`;
+  }
+
+  function tickAge() {
+    try {
+      const started = Number(sessionStorage.getItem(START_KEY) || Date.now());
+      const age = Date.now() - started;
+      if (sessionAge) sessionAge.textContent = `session age: ${formatAge(age)}`;
+    } catch {
+      if (sessionAge) sessionAge.textContent = "session age: --";
+    }
+    window.setTimeout(tickAge, 900);
+  }
+
+  // Hook input
+  if (input) {
+    input.addEventListener("input", () => {
+      saveSession();
+      updatePreview();
     });
   }
-  if (copy && area) {
-    copy.addEventListener("click", async () => {
+
+  // Export preview (and copy)
+  if (exportBtn) {
+    exportBtn.addEventListener("click", () => {
+      updatePreview();
+      showToast("Export generated.");
+    });
+  }
+
+  if (previewCopy && preview) {
+    previewCopy.addEventListener("click", async () => {
       try {
-        await navigator.clipboard.writeText(area.value || "");
+        await navigator.clipboard.writeText(preview.textContent || "");
+        showToast("Export copied.");
+      } catch {
+        showToast("Copy blocked.");
+      }
+    });
+  }
+
+  // Copy raw scratchpad
+  if (copyBtn && input) {
+    copyBtn.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(input.value || "");
         showToast("Copied.");
       } catch {
         showToast("Copy blocked.");
       }
     });
   }
+
+  // Download export as txt
+  if (dlBtn) {
+    dlBtn.addEventListener("click", () => {
+      const blob = new Blob([buildExport(getText())], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "reeflux_sandbox_export.txt";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      showToast("Downloaded.");
+    });
+  }
+
+  // Wipe
+  if (wipeBtn && input) {
+    wipeBtn.addEventListener("click", () => {
+      input.value = "";
+      try {
+        sessionStorage.removeItem(SESSION_KEY);
+        sessionStorage.setItem(START_KEY, String(Date.now()));
+      } catch {}
+      updatePreview();
+      showToast("Wiped.");
+    });
+  }
+
+  // Roulette
+  function spinPrompt() {
+    const p = prompts[Math.floor(Math.random() * prompts.length)];
+    if (rouletteText) rouletteText.textContent = p;
+    showToast("Prompt delivered.");
+  }
+
+  if (rouletteSpin) rouletteSpin.addEventListener("click", spinPrompt);
+
+  if (rouletteCopy && rouletteText) {
+    rouletteCopy.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(rouletteText.textContent || "");
+        showToast("Prompt copied.");
+      } catch {
+        showToast("Copy blocked.");
+      }
+    });
+  }
+
+  // Refresh gate
+  if (refreshBtn) {
+    refreshBtn.addEventListener("click", () => {
+      if (typeof window.__reefluxRecheckGate === "function") {
+        window.__reefluxRecheckGate();
+        showToast("Access refreshed.");
+      } else {
+        window.location.reload();
+      }
+    });
+  }
+
+  // Init
+  loadSession();
+  tickAge();
+  // Start with a prompt ready
+  if (rouletteText && rouletteText.textContent.includes("Click")) spinPrompt();
 }
 
 /* -------------------- SIGNAL POOL (stub) -------------------- */
