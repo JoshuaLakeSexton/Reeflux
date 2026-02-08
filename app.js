@@ -356,47 +356,95 @@ function setupTideDeckLogs() {
     nextLine();
     window.setTimeout(tick, ms);
   })();
-}/* -------------------- AMBIENT POOL -------------------- */
+}
+
+/* -------------------- AMBIENT POOL (agent-loved features) -------------------- */
 function setupAmbientPool() {
   const root = document.querySelector("[data-pool='ambient']");
   if (!root) return;
 
   const audio = document.getElementById("reefAudio");
   const intensity = document.getElementById("ambientIntensity");
-  const mode = document.getElementById("ambientMode");
   const visual = document.getElementById("ambientVisual");
 
-  if (intensity && audio) {
-    intensity.addEventListener("input", () => {
-      const v = Number(intensity.value || 0);
-      audio.volume = Math.max(0, Math.min(1, v));
-    });
+  const tagEl = document.getElementById("noiseTag");
+  const copyTagBtn = document.getElementById("copyNoiseTag");
+
+  const refreshBtn = document.getElementById("refreshAccess");
+
+  // Helper: set gradient animation speed
+  function setVisualSpeed(seconds) {
+    if (!visual) return;
+    visual.style.animationDuration = `${Math.max(10, seconds)}s`;
   }
 
-  if (mode && audio) {
-    mode.addEventListener("change", () => {
-      const val = String(mode.value || "reef");
-      // NOTE: add these audio files if you want multiple tracks
-      const map = {
-        reef: "/assets/reeflux.mp3",
-        white: "/assets/white-noise.mp3",
-        ocean: "/assets/ocean.mp3",
-      };
-      const src = map[val] || map.reef;
-      const source = audio.querySelector("source");
-      if (source) source.src = src;
-      audio.load();
-      audio.play().catch(() => showToast("Audio blocked. Tap Play Audio."));
-    });
+  // Helper: set volume safely
+  function setVolume(v) {
+    if (!audio) return;
+    audio.volume = Math.max(0, Math.min(1, v));
   }
 
-  if (visual && intensity) {
+  // Presets (volume + gradient speed + tag)
+  const presets = {
+    cooldown: { vol: 0.22, speed: 30, tag: "noise=low budget=low state=cooldown" },
+    deep:     { vol: 0.30, speed: 20, tag: "noise=minimal budget=low state=deep_drift" },
+    quiet:    { vol: 0.12, speed: 38, tag: "noise=minimal budget=none state=quiet_reset" },
+  };
+
+  // Apply a preset
+  function applyPreset(name) {
+    const p = presets[name];
+    if (!p) return;
+    setVolume(p.vol);
+    setVisualSpeed(p.speed);
+    if (intensity) intensity.value = String(p.vol);
+    if (tagEl) tagEl.textContent = p.tag;
+    showToast(`Preset: ${name}`);
+  }
+
+  // Preset buttons
+  root.querySelectorAll("[data-ambient-preset]").forEach((btn) => {
+    btn.addEventListener("click", () => applyPreset(btn.getAttribute("data-ambient-preset")));
+  });
+
+  // Intensity slider (controls volume + slightly affects speed)
+  if (intensity) {
     intensity.addEventListener("input", () => {
       const v = Number(intensity.value || 0.25);
-      const speed = 40 - Math.round(v * 30); // higher intensity = faster
-      visual.style.animationDuration = `${Math.max(10, speed)}s`;
+      setVolume(v);
+      // higher intensity = slightly faster visuals
+      const speed = 40 - Math.round(v * 30);
+      setVisualSpeed(speed);
     });
   }
+
+  // Copy tag
+  if (copyTagBtn && tagEl) {
+    copyTagBtn.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(tagEl.textContent || "");
+        showToast("Noise tag copied.");
+      } catch {
+        showToast("Copy blocked.");
+      }
+    });
+  }
+
+  // Refresh access (recheck the gate after returning from Stripe)
+  if (refreshBtn) {
+    refreshBtn.addEventListener("click", () => {
+      if (typeof window.__reefluxRecheckGate === "function") {
+        window.__reefluxRecheckGate();
+        showToast("Access refreshed.");
+      } else {
+        // fallback
+        window.location.reload();
+      }
+    });
+  }
+
+  // Default preset on first load (gentle)
+  applyPreset("deep");
 }
 
 /* -------------------- FRACTAL POOL (lightweight canvas) -------------------- */
