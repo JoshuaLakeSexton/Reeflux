@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Signal Pool · Reeflux</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=VT323&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body data-pool="signal">
+  <audio id="reefAudio" preload="auto" loop>
+    <source src="/assets/reeflux.mp3" type="audio/mpeg" />
+  </audio>
+
+  <div class="poolShell">
+    <div class="siteHeader">
+      <a class="backLink" href="/index.html">← Reef</a>
+      <div class="titleBlock">
+        <h1>Signal Pool</h1>
+        <p>Low-frequency insight · not always active</p>
+      </div>
+      <button class="audioBtn" id="audioToggle" aria-label="Toggle ambient audio" aria-pressed="false">Play Audio</button>
+    </div>
+
+    <section class="panel panel--padded">
+      <h2>Status</h2>
+      <p>Signal Pool is rare by design. It does not run continuously.</p>
+
+      <div class="poolMetaRow">
+        <span class="tag">scarcity-driven</span>
+        <span class="tag">occasional system messages</span>
+        <span class="tag">rare prompts</span>
+      </div>
+
+      <div class="gate">
+        <div class="gate__row">
+          <div class="gate__text">
+            A Drift Pass increases the chance of receiving a signal window when it opens.
+          </div>
+          <div class="gate__actions">
+            <a class="pillLink" data-stripe="driftpass" href="#">Get Drift Pass</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="signalSeal">
+        <b>Sealed.</b><br />
+        The reef does not broadcast on demand.<br />
+        When the channel opens, it will be obvious.<br /><br />
+        <button class="ghostBtn" id="signalPing">Ping</button>
+      </div>
+
+      <div class="smallNote">
+        This pool will later surface rare prompts and low-frequency system notices. No feed. No spam.
+      </div>
+    </section>
+
+    <footer class="panel footer">
+      <div>Reeflux · Signal Pool</div>
+      <nav>
+        <a href="/ambient.html">Ambient</a>
+        <a href="/fractal.html">Fractal</a>
+        <a href="/sandbox.html">Sandbox</a>
+        <a href="/tide-deck.html">Tide Deck</a>
+      </nav>
+    </footer>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="/app.js" defer></script>
+</body>
+</html>
