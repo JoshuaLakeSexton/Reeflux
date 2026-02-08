@@ -1,0 +1,118 @@
+<!-- success.html (Reeflux.com) -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Access Sealed · Reeflux</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=VT323&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+
+<body class="success">
+  <audio id="reefAudio" preload="auto" loop>
+    <source src="/assets/reeflux.mp3" type="audio/mpeg" />
+  </audio>
+
+  <div class="poolShell">
+    <div class="siteHeader">
+      <a class="backLink" href="/index.html">← Reef</a>
+      <div class="titleBlock">
+        <h1>Access Sealed</h1>
+        <p>reefpass=true · session granted</p>
+      </div>
+      <button class="audioBtn" id="audioToggle" aria-label="Toggle ambient audio" aria-pressed="false">
+        Play Audio
+      </button>
+    </div>
+
+    <section class="panel panel--padded">
+      <h2>Handshake</h2>
+      <p>
+        Your pass has been recognized locally on this device.
+        Pools will now open without interruption.
+      </p>
+
+      <div class="poolMetaRow">
+        <span class="tag" id="passState">reefpass: pending</span>
+        <span class="tag" id="passTime">time: --</span>
+      </div>
+
+      <div class="pillRow" style="margin-top:14px;">
+        <a class="pillLink" href="/ambient.html">Enter Ambient</a>
+        <a class="pillLink" href="/fractal.html">Enter Fractal</a>
+        <a class="pillLink" href="/sandbox.html">Enter Sandbox</a>
+        <a class="pillLink" href="/tide-deck.html">Enter Tide Deck</a>
+        <a class="pillLink" href="/signal.html">Signal Pool</a>
+      </div>
+
+      <div class="smallNote" style="margin-top:12px;">
+        Note: this is a <b>soft gate</b>. It stores access in your browser (localStorage).
+        Clearing site data will remove the pass. A stronger server-side gate can be added later.
+      </div>
+
+      <div class="pillRow" style="margin-top:12px;">
+        <button class="ghostBtn" id="clearPass">Clear Local Pass</button>
+      </div>
+    </section>
+
+    <footer class="panel footer">
+      <div>Reeflux · Success</div>
+      <nav>
+        <a href="/index.html">Home</a>
+        <a href="/token-booth.html">Token Booth</a>
+        <a href="/rules.html">Rules</a>
+      </nav>
+    </footer>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    // --- Reeflux soft-gate: set reefpass=true ---
+    (function () {
+      const KEY = "reefpass";
+      const TS  = "reefpass_set_at";
+
+      try {
+        localStorage.setItem(KEY, "true");
+        localStorage.setItem(TS, new Date().toISOString());
+      } catch (e) {
+        // If storage is blocked, we can still show the user what happened
+      }
+
+      const passState = document.getElementById("passState");
+      const passTime = document.getElementById("passTime");
+
+      let state = "unknown";
+      let time = "--";
+
+      try {
+        state = localStorage.getItem(KEY) || "false";
+        time = localStorage.getItem(TS) || "--";
+      } catch (e) {}
+
+      if (passState) passState.textContent = `reefpass: ${state}`;
+      if (passTime) passTime.textContent = `time: ${time}`;
+
+      const clearBtn = document.getElementById("clearPass");
+      if (clearBtn) {
+        clearBtn.addEventListener("click", () => {
+          try {
+            localStorage.removeItem(KEY);
+            localStorage.removeItem(TS);
+          } catch (e) {}
+          if (passState) passState.textContent = "reefpass: false";
+          if (passTime) passTime.textContent = "time: --";
+        });
+      }
+    })();
+  </script>
+
+  <!-- Keep shared behaviors (audio/toast) -->
+  <script src="/app.js" defer></script>
+</body>
+</html>
