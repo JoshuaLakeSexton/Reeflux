@@ -569,4 +569,43 @@ a:hover{ opacity:.92; }
   line-height: 1.5;
   color: rgba(230,227,216,.78);
 }
+/* ===== Add this to the BOTTOM of styles.css =====
+   Ambient Pool: subtle pulse overlay synced to animation duration
+*/
+.ambientGradient{
+  position: relative; /* ensure overlay layers correctly */
+}
+
+/* soft breathing/pulse */
+.ambientGradient::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  /* gentle light bloom */
+  background:
+    radial-gradient(900px 280px at 50% 45%, rgba(255,255,255,.14), transparent 62%),
+    radial-gradient(700px 260px at 35% 60%, rgba(120,220,255,.10), transparent 60%),
+    radial-gradient(820px 300px at 65% 55%, rgba(47,230,195,.08), transparent 62%);
+  opacity: .0;
+  mix-blend-mode: screen;
+  animation: ambientPulse 8s ease-in-out infinite;
+}
+
+/* tiny vignette shimmer */
+.ambientGradient::after{
+  content:"";
+  position:absolute;
+  inset:-2px;
+  pointer-events:none;
+  border-radius: inherit;
+  background: radial-gradient(1200px 420px at 50% 50%, transparent 58%, rgba(0,0,0,.18) 92%);
+  opacity: .55;
+}
+
+@keyframes ambientPulse{
+  0%   { opacity: .04; transform: scale(1); }
+  50%  { opacity: .16; transform: scale(1.015); }
+  100% { opacity: .04; transform: scale(1); }
+}
 
