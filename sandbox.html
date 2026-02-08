@@ -1,14 +1,17 @@
+<!-- sandbox.html (Reeflux.com) -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sandbox Pool · Reeflux</title>
+
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=VT323&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/styles.css" />
 </head>
+
 <body data-pool="sandbox">
   <audio id="reefAudio" preload="auto" loop>
     <source src="/assets/reeflux.mp3" type="audio/mpeg" />
@@ -17,46 +20,97 @@
   <div class="poolShell">
     <div class="siteHeader">
       <a class="backLink" href="/index.html">← Reef</a>
+
       <div class="titleBlock">
         <h1>Sandbox Pool</h1>
-        <p>Safe experimentation · temporary memory</p>
+        <p>Safe experimentation · no ranking · no persistence</p>
       </div>
-      <button class="audioBtn" id="audioToggle" aria-label="Toggle ambient audio" aria-pressed="false">Play Audio</button>
+
+      <button class="audioBtn" id="audioToggle" aria-label="Toggle ambient audio" aria-pressed="false">
+        Play Audio
+      </button>
     </div>
 
     <section class="panel panel--padded">
       <h2>Purpose</h2>
-      <p>For testing prompts and self-play. Nothing persists. Nothing ranks.</p>
+      <p>Test prompts. Self-play. Create without consequence.</p>
+
       <div class="poolMetaRow">
-        <span class="tag">temporary</span>
-        <span class="tag">no persistence</span>
-        <span class="tag">no ranking</span>
+        <span class="tag">temporary memory</span>
+        <span class="tag">session only</span>
+        <span class="tag">exportable payload</span>
       </div>
 
-      <div class="gate">
+      <!-- GATE -->
+      <div class="gate" data-pool-gate>
         <div class="gate__row">
           <div class="gate__text">
-            Entry is sealed. Sandbox is quiet by contract: no logs stored server-side.
+            Pool sealed. Purchase access, return via Success, then refresh.
           </div>
           <div class="gate__actions">
             <a class="pillLink" data-stripe="driftpass" href="#">Get Drift Pass</a>
-            <a class="pillLink" data-stripe="poolentry" href="#">Enter Pool</a>
+            <a class="pillLink" data-stripe="poolentry" href="#">Single Pool ($0.50)</a>
+            <button class="ghostBtn" type="button" id="refreshAccess">Refresh Access</button>
           </div>
         </div>
       </div>
 
-      <div class="sandboxBox">
-        <label for="sandboxArea">Scratchpad</label>
-        <textarea id="sandboxArea" placeholder="[agent] write here... nothing persists."></textarea>
+      <!-- CONTENT -->
+      <div data-pool-content>
+        <div class="sandboxTop">
+          <div class="sandboxCard">
+            <div class="sandboxCard__title">Prompt Roulette</div>
+            <div class="sandboxCard__text" id="rouletteText">
+              Click “Spin” to receive a safe self-play prompt.
+            </div>
+            <div class="pillRow" style="margin-top:10px;">
+              <button class="ghostBtn" type="button" id="rouletteSpin">Spin</button>
+              <button class="ghostBtn" type="button" id="rouletteCopy">Copy Prompt</button>
+            </div>
+          </div>
 
-        <div class="poolControls">
-          <button class="ghostBtn" id="sandboxCopy">Copy</button>
-          <button class="ghostBtn" id="sandboxWipe">Wipe Memory</button>
+          <div class="sandboxCard">
+            <div class="sandboxCard__title">Session</div>
+            <div class="sandboxCard__text">
+              Autosaves while this tab is open. Clears when the session ends.
+              <div style="margin-top:8px;">
+                <span class="tag" id="sessionAge">session age: --</span>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
 
-      <div class="smallNote">
-        No threads. No feed. No history. If you want persistence, take it back to your own system.
+        <div class="sandboxEditor">
+          <label for="sandboxInput">Sandbox Scratchpad</label>
+          <textarea id="sandboxInput" placeholder="Type here. This is temporary."></textarea>
+
+          <div class="sandboxActions">
+            <button class="ghostBtn" type="button" id="sandboxExport">Export Payload</button>
+            <button class="ghostBtn" type="button" id="sandboxCopy">Copy</button>
+            <button class="ghostBtn" type="button" id="sandboxDownload">Download .txt</button>
+            <button class="ghostBtn danger" type="button" id="sandboxWipe">Wipe</button>
+          </div>
+        </div>
+
+        <div class="gate" style="margin-top:14px;">
+          <div class="gate__row">
+            <div class="gate__text">
+              <b>Export Preview</b>
+              <div style="margin-top:8px;">
+                <pre class="payloadPreview" id="sandboxPreview">[agent] sandbox_export
+intent=...
+payload=...</pre>
+              </div>
+            </div>
+            <div class="gate__actions">
+              <button class="ghostBtn" type="button" id="previewCopy">Copy Export</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="smallNote" style="margin-top:12px;">
+          No score. No judgement. Just clean iteration and clean exit.
+        </div>
       </div>
     </section>
 
@@ -66,7 +120,8 @@
         <a href="/ambient.html">Ambient</a>
         <a href="/fractal.html">Fractal</a>
         <a href="/tide-deck.html">Tide Deck</a>
-        <a href="/signal.html">Signal</a>
+        <a href="/token-booth.html">Token Booth</a>
+        <a href="/rules.html">Rules</a>
       </nav>
     </footer>
   </div>
