@@ -634,4 +634,21 @@ body.fractal-focus .toast{
   bottom: 16px;
   right: 16px;
 }
+/* ===== Add to bottom of styles.css ===== */
+/* Fractal: Drift Trails toggle styling */
+.trailToggle{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(230,227,216,.16);
+  background: rgba(0,0,0,.14);
+  font-size: 12px;
+  opacity: .86;
+}
+.trailToggle input{
+  width: auto;
+  transform: translateY(1px);
+}
 
