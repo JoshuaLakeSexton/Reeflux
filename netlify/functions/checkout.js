@@ -2,7 +2,6 @@
 
 const Stripe = require("stripe");
 
-// Stripe secret key is set in Netlify environment variables
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2023-10-16",
 });
@@ -10,75 +9,63 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 exports.handler = async (event) => {
   try {
     if (event.httpMethod !== "POST") {
-      return {
-        statusCode: 405,
-        body: "Method Not Allowed",
-      };
+      return { statusCode: 405, body: "Method Not Allowed" };
     }
 
     const body = JSON.parse(event.body || "{}");
 
-    // Where the user should go after successful payment
-    const nextPath = body.next || "/tide-deck.html";
+    // product: "single" | "drift"
+    const product = body.product || "single";
+    // pool slug for single-pool purchases (optional but recommended)
+    const pool = body.pool || null;
 
-    // MVP defaults
-    const scope = body.scope || "any_pool";
-    const minutes = body.minutes || 30;
+    const siteUrl = process.env.SITE_URL || "https://reeflux.com";
 
-    // Safety: only allow internal redirects
-    if (!nextPath.startsWith("/")) {
+    const PRICE_SINGLE = process.env.PRICE_SINGLE_POOL;
+    const PRICE_DRIFT = process.env.PRICE_DRIFT_PASS;
+
+    if (!PRICE_SINGLE || !PRICE_DRIFT) {
       return {
-        statusCode: 400,
-        body: "Invalid redirect path",
+        statusCode: 500,
+        body: "Missing PRICE_SINGLE_POOL or PRICE_DRIFT_PASS env vars",
       };
     }
 
-    // ✅ Define siteUrl OUTSIDE the object literal
-    const siteUrl = process.env.SITE_URL || "https://reeflux.com";
+    const isDrift = product === "drift";
+    const price = isDrift ? PRICE_DRIFT : PRICE_SINGLE;
 
-    // Create Stripe Checkout Session
+    // Drift is a subscription, Single is a one-time payment
+    const mode = isDrift ? "subscription" : "payment";
+
+    // Where to send them after Stripe finishes
+    // We'll send them to a success handler that can verify session_id
+    const successUrl = `${siteUrl}/.netlify/functions/success?session_id={CHECKOUT_SESSION_ID}`;
+    const cancelUrl = `${siteUrl}/pools?canceled=1`;
+
     const session = await stripe.checkout.sessions.create({
-      mode: "payment",
-      payment_method_types: ["card"],
+      mode,
+      line_items: [{ price, quantity: 1 }],
+      success_url: successUrl,
+      cancel_url: cancelUrl,
 
-      line_items: [
-        {
-          price_data: {
-            currency: "usd",
-            product_data: {
-              name: "Reeflux Drift Pass",
-              description: `Unlock Reeflux pool access for ${minutes} minutes.`,
-            },
-            unit_amount: 500, // $5.00 (note: 500 cents). Update comment if needed.
-          },
-          quantity: 1,
-        },
-      ],
-
-      // ✅ These must be plain properties inside the object
-      success_url: `${siteUrl}/.netlify/functions/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${siteUrl}/pools?canceled=1`,
-
+      // Helpful metadata for your webhook / entitlement logic later
       metadata: {
-        next: nextPath,
-        scope: scope,
-        minutes: String(minutes),
+        product,
+        pool: pool || "",
       },
     });
 
     return {
       statusCode: 200,
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url: session.url }),
     };
   } catch (err) {
     console.error("Stripe checkout error:", err);
-
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: "Checkout failed" }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ error: err.message || "Checkout failed" }),
     };
   }
 };
