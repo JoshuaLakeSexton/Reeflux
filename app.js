@@ -747,20 +747,56 @@ function setupSignalPool() {
        - If reefpass=true: show content, hide gate
        - Else: hide content, show gate
 */
-function setupPoolGate() {
-  // Detect pool name from body OR any [data-pool] element
-  const poolEl = document.querySelector("[data-pool]");
-  const poolName =
-    document.body?.getAttribute("data-pool") ||
-    poolEl?.getAttribute("data-pool");
+/* -------------------- POOL GATE (Stripe Checkout) -------------------- */
+/*
+  Requirements on each pool page:
+  - <body data-pool="ambient">   (or fractal/sandbox/signal)
+  - Exactly ONE gate element:    <div data-pool-gate>...</div>
+  - Exactly ONE content wrapper: <div data-pool-content>...</div>
 
+  This gate currently uses localStorage("reefpass") for MVP unlock.
+  Stripe checkout redirect still needs to set reefpass=true after payment.
+*/
+
+window.startCheckout = async function startCheckout(product) {
+  try {
+    const poolName = document.body?.getAttribute("data-pool") || "";
+    const res = await fetch("/.netlify/functions/checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        product,       // "single" | "drift"
+        pool: poolName // helps you track which pool they bought
+      }),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      console.error("Checkout error:", text);
+      showToast("Checkout error.");
+      return;
+    }
+
+    const data = await res.json();
+    if (!data.url) {
+      showToast("Checkout error (no url).");
+      return;
+    }
+
+    window.location.href = data.url;
+  } catch (e) {
+    console.error(e);
+    showToast("Checkout failed.");
+  }
+};
+
+function setupPoolGate() {
+  const poolName = document.body?.getAttribute("data-pool");
   if (!poolName) return; // not a pool page
 
-  const content = document.querySelector("[data-pool-content]");
   const gate = document.querySelector("[data-pool-gate]");
-
-  // If wrappers aren't present, do nothing
-  if (!content && !gate) return;
+  const content = document.querySelector("[data-pool-content]");
+  if (!gate || !content) return;
 
   let hasPass = false;
   try {
@@ -769,13 +805,19 @@ function setupPoolGate() {
     hasPass = false;
   }
 
-  if (content) content.hidden = !hasPass;
-  if (gate) gate.hidden = hasPass;
+  // Show gate if locked; show content if unlocked
+  gate.hidden = hasPass;
+  content.hidden = !hasPass;
 
-  if (!hasPass && gate && !window.__reefluxGateToastShown) {
-    window.__reefluxGateToastShown = true;
-    showToast("Pool sealed. Pass required.");
-  }
+  // Recheck hook (your Refresh Access button uses this)
+  window.__reefluxRecheckGate = function () {
+    try {
+      const ok = localStorage.getItem("reefpass") === "true";
+      gate.hidden = ok;
+      content.hidden = !ok;
+    } catch {}
+  };
+}
 
   // Uses your Netlify function checkout endpoint
   window.startCheckout = async function startCheckout(product) {
