@@ -2,6 +2,7 @@
   "name": "reeflux",
   "private": true,
   "dependencies": {
+    "@upstash/redis": "^1.36.2",
     "stripe": "^14.0.0"
   }
 }
