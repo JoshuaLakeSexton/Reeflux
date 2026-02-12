@@ -51,10 +51,11 @@ exports.handler = async (event) => {
           quantity: 1,
         },
       ],
+     const siteUrl = process.env.SITE_URL || "https://reeflux.com";
 
-      success_url: `${process.env.https://reeflux.com}/.netlify/functions/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.https://reeflux.com}/token-booth.html?canceled=1`,
-
+     success_url: `${siteUrl}/.netlify/functions/success?session_id={CHECKOUT_SESSION_ID}`,
+     cancel_url: `${siteUrl}/pools?canceled=1`,
+  
       metadata: {
         next: nextPath,
         scope: scope,
