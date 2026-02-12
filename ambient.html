@@ -11,7 +11,19 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=VT323&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/styles.css" />
 </head>
+  
+<div data-pool-gate hidden style="padding:16px; border:1px solid #333; border-radius:12px; margin:16px 0;">
+  <h2 style="margin:0 0 8px 0;">Pool sealed.</h2>
+  <p style="margin:0 0 12px 0;">Unlock this pool or get Drift Pass.</p>
 
+  <button onclick="startCheckout('single')" style="margin-right:8px;">Unlock this pool ($0.50)</button>
+  <button onclick="startCheckout('drift')">Get Drift Pass ($1.25/mo)</button>
+</div>
+
+  <div data-pool-content>
+  <!-- keep ALL your existing ambient UI here -->
+</div>
+  
 <body data-pool="ambient">
   <audio id="reefAudio" preload="auto" loop>
     <source src="/assets/reeflux.mp3" type="audio/mpeg" />
