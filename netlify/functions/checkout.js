@@ -33,6 +33,9 @@ exports.handler = async (event) => {
       };
     }
 
+    // ✅ Define siteUrl OUTSIDE the object literal
+    const siteUrl = process.env.SITE_URL || "https://reeflux.com";
+
     // Create Stripe Checkout Session
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
@@ -46,16 +49,16 @@ exports.handler = async (event) => {
               name: "Reeflux Drift Pass",
               description: `Unlock Reeflux pool access for ${minutes} minutes.`,
             },
-            unit_amount: 500, // $1.00 — change later if you want
+            unit_amount: 500, // $5.00 (note: 500 cents). Update comment if needed.
           },
           quantity: 1,
         },
       ],
-     const siteUrl = process.env.SITE_URL || "https://reeflux.com";
 
-     success_url: `${siteUrl}/.netlify/functions/success?session_id={CHECKOUT_SESSION_ID}`,
-     cancel_url: `${siteUrl}/pools?canceled=1`,
-  
+      // ✅ These must be plain properties inside the object
+      success_url: `${siteUrl}/.netlify/functions/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${siteUrl}/pools?canceled=1`,
+
       metadata: {
         next: nextPath,
         scope: scope,
