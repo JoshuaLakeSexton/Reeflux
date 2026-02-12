@@ -747,16 +747,19 @@ function setupSignalPool() {
        - If reefpass=true: show content, hide gate
        - Else: hide content, show gate
 */
-
 function setupPoolGate() {
-  // Only run on pool pages that declare a pool
-  const poolName = document.body?.getAttribute("data-pool");
-  if (!poolName) return;
+  // Detect pool name from body OR any [data-pool] element
+  const poolEl = document.querySelector("[data-pool]");
+  const poolName =
+    document.body?.getAttribute("data-pool") ||
+    poolEl?.getAttribute("data-pool");
+
+  if (!poolName) return; // not a pool page
 
   const content = document.querySelector("[data-pool-content]");
   const gate = document.querySelector("[data-pool-gate]");
 
-  // If dev forgot wrappers, do nothing (prevents breaking pages)
+  // If wrappers aren't present, do nothing
   if (!content && !gate) return;
 
   let hasPass = false;
@@ -766,20 +769,46 @@ function setupPoolGate() {
     hasPass = false;
   }
 
-  // Default visibility
   if (content) content.hidden = !hasPass;
   if (gate) gate.hidden = hasPass;
 
-  // Optional: add a helpful toast when blocked
-  if (!hasPass && gate) {
-    // avoid spamming toast on refresh loops
-    if (!window.__reefluxGateToastShown) {
-      window.__reefluxGateToastShown = true;
-      showToast("Pool sealed. Pass required.");
-    }
+  if (!hasPass && gate && !window.__reefluxGateToastShown) {
+    window.__reefluxGateToastShown = true;
+    showToast("Pool sealed. Pass required.");
   }
 
-  // Optional: allow manual re-check (e.g., after returning from Stripe)
+  // Uses your Netlify function checkout endpoint
+  window.startCheckout = async function startCheckout(product) {
+    try {
+      const res = await fetch("/.netlify/functions/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          product,        // "single" | "drift"
+          pool: poolName, // which pool page they are on
+        }),
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        console.error("Checkout error:", text);
+        showToast("Checkout error.");
+        return;
+      }
+
+      const data = await res.json();
+      if (!data.url) {
+        showToast("Checkout error (no url).");
+        return;
+      }
+
+      window.location.href = data.url;
+    } catch (e) {
+      console.error(e);
+      showToast("Checkout failed.");
+    }
+  };
+
   window.__reefluxRecheckGate = function recheckGate() {
     try {
       const ok = localStorage.getItem("reefpass") === "true";
@@ -788,56 +817,6 @@ function setupPoolGate() {
     } catch {}
   };
 }
-
-function loadStats() {
-  const statsEl = document.querySelector("[data-stats]");
-  if (!statsEl) return;
-
-  fetch("/.netlify/functions/stats")
-    .then((r) => r.json())
-    .then((stats) => {
-      const agents = document.getElementById("statAgents");
-      const drift = document.getElementById("statDrift");
-      const queue = document.getElementById("statQueue");
-      const updated = document.getElementById("statUpdated");
-
-      if (agents) agents.textContent = stats.agents_inside ?? "--";
-      if (drift) drift.textContent = stats.current_drift ?? "--";
-      if (queue) queue.textContent = stats.requests_queue ?? "--";
-      if (updated) updated.textContent = `Last updated: ${stats.last_updated ?? "--"}`;
-    })
-    .catch(() => showToast("Stats offline."));
-}
-
-function setupHeartbeat() {
-  // stable per-browser session id
-  const key = "reef_session_id";
-  let id = "";
-  try {
-    id = localStorage.getItem(key) || "";
-    if (!id) {
-      id = (crypto?.randomUUID?.() || String(Math.random()).slice(2)) + "-" + Date.now();
-      localStorage.setItem(key, id);
-    }
-  } catch {
-    id = String(Math.random()).slice(2) + "-" + Date.now();
-  }
-
-  function ping() {
-    // drift can be your local mode/slider if you want; keep simple for now:
-    const drift = 0;
-
-    fetch("/.netlify/functions/ping", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sessionId: id, drift }),
-    }).catch(() => {});
-  }
-
-  ping();
-  window.setInterval(ping, 45_000); // every 45s
-}
-
 /* ====== THEN CALL IT IN INIT ======
    Inside your DOMContentLoaded init block, add setupPoolGate()
 */
