@@ -1,7 +1,15 @@
 // netlify/functions/checkout.js
 const Stripe = require("stripe");
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+const stripe = const key = process.env.STRIPE_SECRET_KEY;
+
+if (!key || !(key.startsWith("sk_") || key.startsWith("rk_"))) {
+  throw new Error(
+    `Bad STRIPE_SECRET_KEY in env. Expected sk_ or rk_. Got: ${String(key).slice(0, 3)}...`
+  );
+}
+
+const stripe = new Stripe(key, { apiVersion: "2023-10-16" }); new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2023-10-16",
 });
 
