@@ -5,78 +5,51 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Access Granted · Reeflux</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=VT323&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/styles.css" />
 </head>
 
 <body>
-  <div class="poolShell" style="max-width: 920px;">
+  <div class="poolShell">
     <section class="panel panel--padded">
-      <h1 id="title">Checking access…</h1>
-      <p id="msg" style="margin-top:10px;"></p>
-
-      <div style="margin-top:16px; display:flex; gap:10px; flex-wrap:wrap;">
-        <a class="pillLink" id="returnPool" href="/index.html" style="text-decoration:none;">Return</a>
-        <a class="ghostBtn" id="goHome" href="/index.html" style="text-decoration:none;">Home</a>
-      </div>
-
-      <div class="smallNote" style="margin-top:14px;">
-        If you don’t see access after returning, click “Refresh Access” on the pool page.
-      </div>
+      <h1 style="margin-top:0;">Access granted.</h1>
+      <p>Sealing pass on this device… returning you to the pool.</p>
+      <p class="smallNote" id="successNext">…</p>
     </section>
   </div>
 
   <script>
     (function () {
-      const qs = new URLSearchParams(window.location.search);
-      const ok = qs.get("ok") === "1";
-      const pool = (qs.get("pool") || "").trim();
-      const product = (qs.get("product") || "").trim();
-      const reason = (qs.get("reason") || "").trim();
+      const params = new URLSearchParams(window.location.search);
 
-      const titleEl = document.getElementById("title");
-      const msgEl = document.getElementById("msg");
-      const returnEl = document.getElementById("returnPool");
+      const tier = (params.get("tier") || "single").toLowerCase();
+      const pool = (params.get("pool") || "unknown").toLowerCase();
+      const next = params.get("next") || "/index.html";
 
-      // Map pool slug -> file
-      const poolToPath = {
-        ambient: "/ambient.html",
-        fractal: "/fractal.html",
-        sandbox: "/sandbox.html",
-        signal: "/signal.html",
-        tide: "/tide-deck.html",
-      };
-
-      const target = poolToPath[pool] || "/index.html";
-      returnEl.href = target;
-      returnEl.textContent = pool ? `Return to ${pool}` : "Return to Reef";
-
-      if (!ok) {
-        titleEl.textContent = "Payment not verified";
-        msgEl.textContent = reason
-          ? `We couldn't verify the payment yet (reason: ${reason}). If you just paid, wait a moment and try again from the pool.`
-          : "We couldn't verify the payment yet. If you just paid, try again from the pool.";
-        return;
-      }
-
-      // ✅ MVP unlock on this device
+      // Store access:
+      // - drift pass unlocks all pools
+      // - single unlocks only the purchased pool
       try {
-        localStorage.setItem("reefpass", "true");
-        localStorage.setItem("reefpass_set_at", String(Date.now()));
-        if (pool) localStorage.setItem("reefpass_pool", pool);
-        if (product) localStorage.setItem("reefpass_product", product);
-      } catch (e) {
-        // If localStorage fails, cookie may still work (if you later read it in app.js)
-      }
+        const now = String(Date.now());
+        if (tier === "drift") {
+          localStorage.setItem("reefpass_drift", "true");
+          localStorage.setItem("reefpass_drift_at", now);
+        } else {
+          localStorage.setItem(`reefpass_pool_${pool}`, "true");
+          localStorage.setItem(`reefpass_pool_${pool}_at`, now);
+        }
+      } catch (e) {}
 
-      titleEl.textContent = "Access granted";
-      msgEl.textContent = pool
-        ? `You're unlocked for: ${pool}. You can return now.`
-        : "You're unlocked. You can return now.";
+      const el = document.getElementById("successNext");
+      if (el) el.textContent = `Redirecting to: ${next}`;
 
-      // Auto-redirect after a moment (nice UX)
+      // Go back
       setTimeout(() => {
-        window.location.href = target;
-      }, 900);
+        window.location.href = next;
+      }, 700);
     })();
   </script>
 </body>
