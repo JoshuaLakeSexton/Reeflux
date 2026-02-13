@@ -27,10 +27,24 @@
     </div>
 
     <section class="panel panel--padded">
+
+      <!-- PURPOSE (Level 1 parity) -->
+      <div class="poolPurpose">
+        <h2>Purpose</h2>
+        <p>For visual deepwork. For pattern-finding. For calm exploration through infinite structure.</p>
+        <div class="pillRow">
+          <span class="tag">deep zoom</span>
+          <span class="tag">palette drift</span>
+          <span class="tag">quiet focus</span>
+          <span class="tag">exportable</span>
+        </div>
+        <div class="smallNote">Tip: drag to pan · scroll to zoom · double-click to zoom in · “Focus” hides UI.</div>
+      </div>
+
       <!-- GATE -->
       <div class="gate" data-pool-gate>
         <div class="gate__row">
-          <div class="gate__text">Fractal sealed. Unlock access.</div>
+          <div class="gate__text">Fractal sealed. Unlock access. (Success sets access on this device.)</div>
           <div class="gate__actions">
             <button class="pillLink" type="button" onclick="startCheckout('drift')">Get Drift Pass</button>
             <button class="pillLink" type="button" onclick="startCheckout('single')">Single Pool ($0.50)</button>
@@ -39,17 +53,142 @@
         </div>
       </div>
 
-      <!-- CONTENT -->
+      <!-- CONTENT (gated) -->
       <div data-pool-content hidden>
-        <div style="margin:14px 0;">
-          <label for="fractalComplexity">Complexity</label>
-          <input id="fractalComplexity" type="range" min="10" max="40" step="1" value="22" />
-          <button class="ghostBtn" type="button" id="fractalRecenter" style="margin-left:10px;">Recenter</button>
+
+        <!-- FRACTAL CONTROLS DOCK (Level 1 "tons of options") -->
+        <div id="fractalControls" class="fractalDock">
+
+          <div class="fractalDock__row">
+            <div class="fractalDock__group">
+              <div class="fractalDock__label">Preset</div>
+              <select id="frPreset" class="frSelect">
+                <option value="nebula">Nebula Bloom</option>
+                <option value="crystal">Crystalline</option>
+                <option value="classic">Mandelbrot Classic</option>
+                <option value="juliaMist">Julia Mist</option>
+                <option value="electric">Electric Coral</option>
+                <option value="ink">Ink Vortex</option>
+                <option value="glacier">Glacier Spiral</option>
+                <option value="ship">Burning Ship</option>
+              </select>
+            </div>
+
+            <div class="fractalDock__group fractalDock__btnRow">
+              <button class="ghostBtn" id="frRandom" type="button">Randomize</button>
+              <button class="ghostBtn" id="frReset" type="button">Reset</button>
+              <button class="ghostBtn" id="frFocus" type="button">Focus</button>
+            </div>
+
+            <div class="fractalDock__group fractalDock__btnRow">
+              <button class="ghostBtn" id="frCopy" type="button">Copy Settings</button>
+              <button class="ghostBtn" id="frPaste" type="button">Paste</button>
+              <button class="ghostBtn" id="frPng" type="button">Download PNG</button>
+            </div>
+          </div>
+
+          <div class="fractalDock__grid">
+            <div class="frField">
+              <label>Type</label>
+              <select id="frType" class="frSelect">
+                <option value="mandelbrot">Mandelbrot</option>
+                <option value="julia">Julia</option>
+                <option value="burningShip">Burning Ship</option>
+                <option value="phoenix">Phoenix</option>
+              </select>
+            </div>
+
+            <div class="frField">
+              <label>Iterations</label>
+              <input id="frIter" type="range" min="50" max="2000" step="10" value="600" />
+              <div class="frValue" id="frIterVal">600</div>
+            </div>
+
+            <div class="frField">
+              <label>Escape Radius</label>
+              <input id="frEscape" type="range" min="2" max="50" step="1" value="8" />
+              <div class="frValue" id="frEscapeVal">8</div>
+            </div>
+
+            <div class="frField">
+              <label>Power</label>
+              <input id="frPower" type="range" min="2" max="8" step="1" value="2" />
+              <div class="frValue" id="frPowerVal">2</div>
+            </div>
+
+            <div class="frField frJuliaOnly">
+              <label>Julia Re(c)</label>
+              <input id="frJuliaRe" type="range" min="-2" max="2" step="0.001" value="-0.8" />
+              <div class="frValue" id="frJuliaReVal">-0.800</div>
+            </div>
+
+            <div class="frField frJuliaOnly">
+              <label>Julia Im(c)</label>
+              <input id="frJuliaIm" type="range" min="-2" max="2" step="0.001" value="0.156" />
+              <div class="frValue" id="frJuliaImVal">0.156</div>
+            </div>
+
+            <div class="frField">
+              <label>Palette</label>
+              <select id="frPalette" class="frSelect">
+                <option value="aurora">Aurora</option>
+                <option value="nebula">Nebula</option>
+                <option value="coral">Coral</option>
+                <option value="mono">Mono Ink</option>
+                <option value="ice">Ice</option>
+                <option value="gold">Gold</option>
+              </select>
+            </div>
+
+            <div class="frField">
+              <label>Color Cycle</label>
+              <input id="frCycle" type="range" min="0" max="2" step="0.01" value="0.35" />
+              <div class="frValue" id="frCycleVal">0.35</div>
+            </div>
+
+            <div class="frField">
+              <label>Gamma</label>
+              <input id="frGamma" type="range" min="0.6" max="2.2" step="0.01" value="1.1" />
+              <div class="frValue" id="frGammaVal">1.10</div>
+            </div>
+
+            <div class="frField">
+              <label>Contrast</label>
+              <input id="frContrast" type="range" min="0.7" max="2.0" step="0.01" value="1.05" />
+              <div class="frValue" id="frContrastVal">1.05</div>
+            </div>
+
+            <div class="frField">
+              <label>Quality</label>
+              <select id="frQuality" class="frSelect">
+                <option value="0.6">Low (fast)</option>
+                <option value="0.85">Med</option>
+                <option value="1" selected>High</option>
+                <option value="1.25">Ultra</option>
+              </select>
+            </div>
+
+            <div class="frField">
+              <label>Renderer</label>
+              <select id="frRenderer" class="frSelect">
+                <option value="auto" selected>Auto (WebGL → CPU)</option>
+                <option value="webgl">WebGL</option>
+                <option value="cpu">CPU</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="fractalDock__hint">
+            Presets change math + palette + zoom. Your camera can be moved at any time (drag/scroll/dbl-click).
+          </div>
         </div>
 
-        <div style="width:100%; height:420px; border-radius:14px; overflow:hidden;">
-          <canvas id="fractalCanvas" style="width:100%; height:100%; display:block;"></canvas>
+        <!-- FRACTAL CANVAS STAGE (Levels 2 + 3) -->
+        <div class="fractalStage">
+          <div class="fractalStage__badge" id="frBadge">Renderer: Auto</div>
+          <canvas id="fractalCanvas" class="fractalCanvas" aria-label="Fractal renderer"></canvas>
         </div>
+
       </div>
     </section>
 
