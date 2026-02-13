@@ -88,3 +88,17 @@ exports.handler = async (event) => {
     });
   }
 };
+
+exports.handler = function(event, context, callback) {
+  var node = null;
+  try { node = process && process.version; } catch (e) {}
+  callback(null, {
+    statusCode: 200,
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      ok: true,
+      node: node,
+      awsRuntime: (typeof process !== "undefined" && process.env && process.env.AWS_LAMBDA_JS_RUNTIME) ? process.env.AWS_LAMBDA_JS_RUNTIME : null
+    })
+  });
+};
