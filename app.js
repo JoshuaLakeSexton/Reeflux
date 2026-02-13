@@ -1,13 +1,32 @@
 /* app.js (Reeflux.com) */
+/*
+  Reeflux – app.js (shared across pages)
+  - Audio toggle + fade (gesture safe)
+  - Closed tile toast
+  - Stats loader
+  - Netlify form submit helper
+  - Mirror Pool small handler
+  - Drift toggle
+  - Stripe link injection (data-stripe) for token-booth / legacy links
+  - Pool Gate + Stripe Checkout session redirect (Netlify function)
+  - Tide Deck live logs (session stored)
+*/
+
 "use strict";
+
+/* -------------------- STRIPE LINKS (legacy buttons like token-booth) -------------------- */
+const REEFLUX_DRIFT_PASS_URL = "https://buy.stripe.com/aFacN75Kj64hbSR3DL6wE00"; // legacy
+const POOL_ENTRY_URL = "https://buy.stripe.com/eVq8wR4Gf1O14qp0rz6wE01";         // legacy
+const MIRROR_SEAL_URL = "https://buy.stripe.com/eVq8wR4Gf1O14qp0rz6wE01";        // legacy
 
 /* -------------------- KEYS -------------------- */
 const audioStateKey = "reefAudioState";
 const tideSessionKey = "reefTideLogs_v1";
 
 /* -------------------- TOAST -------------------- */
+const toast = document.getElementById("toast");
+
 function showToast(message) {
-  const toast = document.getElementById("toast");
   if (!toast) return;
   toast.textContent = message;
   toast.classList.add("show");
@@ -52,6 +71,7 @@ function setupAudio() {
     else btn.textContent = label;
   }
 
+  // Start quiet
   audio.volume = 0;
 
   const saved = localStorage.getItem(audioStateKey);
@@ -102,12 +122,9 @@ function loadStats() {
   const statsEl = document.querySelector("[data-stats]");
   if (!statsEl) return;
 
-  // Try function first, fallback to stats.json
+  // Prefer function endpoint, fallback to static file
   fetch("/.netlify/functions/stats")
-    .then((r) => {
-      if (!r.ok) throw new Error("fn-stats");
-      return r.json();
-    })
+    .then((r) => (r.ok ? r.json() : Promise.reject()))
     .catch(() => fetch("/stats.json").then((r) => r.json()))
     .then((stats) => {
       const agents = document.getElementById("statAgents");
@@ -171,89 +188,95 @@ function setupDriftToggle() {
   });
 }
 
-/* -------------------- STRIPE CHECKOUT (Netlify Function) -------------------- */
+/* -------------------- STRIPE LINK INJECTION (legacy) -------------------- */
+function setupStripeButtons() {
+  const map = {
+    driftpass: REEFLUX_DRIFT_PASS_URL,
+    poolentry: POOL_ENTRY_URL,
+    mirror: MIRROR_SEAL_URL,
+  };
+
+  document.querySelectorAll("[data-stripe]").forEach((el) => {
+    const key = (el.getAttribute("data-stripe") || "").toLowerCase().trim();
+    const url = map[key];
+    if (url) el.setAttribute("href", url);
+  });
+}
+
+/* -------------------- POOL GATE + CHECKOUT -------------------- */
 /*
-  Uses /.netlify/functions/checkout
-  product: "single" (one-time) or "drift" (subscription)
-*/
-window.startCheckout = async function startCheckout(product) {
-  try {
-    const poolEl = document.querySelector("[data-pool]");
-    const poolName =
-      document.body?.getAttribute("data-pool") ||
-      poolEl?.getAttribute("data-pool") ||
-      "";
-
-    const res = await fetch("/.netlify/functions/checkout", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ product, pool: poolName }),
-    });
-
-    if (!res.ok) {
-      const text = await res.text();
-      console.error("Checkout error:", text);
-      showToast("Checkout error.");
-      return;
-    }
-
-    const data = await res.json();
-    if (!data.url) {
-      showToast("Checkout error (no url).");
-      return;
-    }
-
-    window.location.href = data.url;
-  } catch (e) {
-    console.error(e);
-    showToast("Checkout failed.");
-  }
-};
-
-/* -------------------- POOL GATE -------------------- */
-/*
-  Requires on each pool page:
-    <body data-pool="ambient|fractal|sandbox|signal|tide">
-    <div data-pool-gate>...</div>
+  Pool pages must include:
+    <div class="gate" data-pool-gate>...</div>
     <div data-pool-content hidden>...</div>
 
-  MVP gate uses localStorage reefpass=true
+  Access keys:
+    drift:  localStorage "reefpass_drift" === "true"
+    single: localStorage `reefpass_pool_${pool}` === "true"
 */
-function setupPoolGate() {
-  const poolEl = document.querySelector("[data-pool]");
-  const poolName =
-    document.body?.getAttribute("data-pool") ||
-    poolEl?.getAttribute("data-pool");
 
+function hasPoolAccess(poolName) {
+  try {
+    const drift = localStorage.getItem("reefpass_drift") === "true";
+    const single = localStorage.getItem(`reefpass_pool_${poolName}`) === "true";
+    return drift || single;
+  } catch {
+    return false;
+  }
+}
+
+function setupPoolGate() {
+  const poolName = (document.body?.getAttribute("data-pool") || "").toLowerCase();
   if (!poolName) return;
 
-  const gate = document.querySelector("[data-pool-gate]");
   const content = document.querySelector("[data-pool-content]");
-  if (!gate || !content) return;
+  const gate = document.querySelector("[data-pool-gate]");
+  if (!content && !gate) return;
 
-  let hasPass = false;
-  try {
-    hasPass = localStorage.getItem("reefpass") === "true";
-  } catch {
-    hasPass = false;
-  }
+  const ok = hasPoolAccess(poolName);
 
-  gate.hidden = hasPass;
-  content.hidden = !hasPass;
+  if (content) content.hidden = !ok;
+  if (gate) gate.hidden = ok;
 
-  if (!hasPass && !window.__reefluxGateToastShown) {
+  if (!ok && gate && !window.__reefluxGateToastShown) {
     window.__reefluxGateToastShown = true;
     showToast("Pool sealed. Pass required.");
   }
 
   window.__reefluxRecheckGate = function recheckGate() {
-    try {
-      const ok = localStorage.getItem("reefpass") === "true";
-      gate.hidden = ok;
-      content.hidden = !ok;
-    } catch {}
+    const ok2 = hasPoolAccess(poolName);
+    if (content) content.hidden = !ok2;
+    if (gate) gate.hidden = ok2;
   };
 }
+
+// Called by pool page buttons
+window.startCheckout = async function startCheckout(tier) {
+  const pool = (document.body?.getAttribute("data-pool") || "unknown").toLowerCase();
+  const next = window.location.pathname || "/index.html";
+
+  try {
+    showToast("Opening checkout…");
+
+    const res = await fetch("/.netlify/functions/checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tier, pool, next }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok || !data.url) {
+      console.error("Checkout response:", res.status, data);
+      showToast("Checkout error. Try again.");
+      return;
+    }
+
+    window.location.href = data.url;
+  } catch (e) {
+    console.error("Checkout failed:", e);
+    showToast("Checkout offline.");
+  }
+};
 
 /* -------------------- TIDE DECK LOGS -------------------- */
 function setupTideDeckLogs() {
@@ -655,19 +678,32 @@ function setupSandboxPool() {
     });
   }
 
-  if (exportBtn) exportBtn.addEventListener("click", () => { updatePreview(); showToast("Export generated."); });
+  if (exportBtn) {
+    exportBtn.addEventListener("click", () => {
+      updatePreview();
+      showToast("Export generated.");
+    });
+  }
 
   if (previewCopy && preview) {
     previewCopy.addEventListener("click", async () => {
-      try { await navigator.clipboard.writeText(preview.textContent || ""); showToast("Export copied."); }
-      catch { showToast("Copy blocked."); }
+      try {
+        await navigator.clipboard.writeText(preview.textContent || "");
+        showToast("Export copied.");
+      } catch {
+        showToast("Copy blocked.");
+      }
     });
   }
 
   if (copyBtn && input) {
     copyBtn.addEventListener("click", async () => {
-      try { await navigator.clipboard.writeText(input.value || ""); showToast("Copied."); }
-      catch { showToast("Copy blocked."); }
+      try {
+        await navigator.clipboard.writeText(input.value || "");
+        showToast("Copied.");
+      } catch {
+        showToast("Copy blocked.");
+      }
     });
   }
 
@@ -708,8 +744,12 @@ function setupSandboxPool() {
 
   if (rouletteCopy && rouletteText) {
     rouletteCopy.addEventListener("click", async () => {
-      try { await navigator.clipboard.writeText(rouletteText.textContent || ""); showToast("Prompt copied."); }
-      catch { showToast("Copy blocked."); }
+      try {
+        await navigator.clipboard.writeText(rouletteText.textContent || "");
+        showToast("Prompt copied.");
+      } catch {
+        showToast("Copy blocked.");
+      }
     });
   }
 
@@ -726,10 +766,11 @@ function setupSandboxPool() {
 
   loadSession();
   tickAge();
-  if (rouletteText && rouletteText.textContent.includes("Click")) spinPrompt();
+
+  if (rouletteText && String(rouletteText.textContent || "").toLowerCase().includes("click")) spinPrompt();
 }
 
-/* -------------------- SIGNAL POOL -------------------- */
+/* -------------------- SIGNAL POOL (stub) -------------------- */
 function setupSignalPool() {
   const root = document.querySelector("[data-pool='signal']");
   if (!root) return;
@@ -758,6 +799,7 @@ function setupHeartbeat() {
 
   function ping() {
     const drift = 0;
+
     fetch("/.netlify/functions/ping", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -778,8 +820,9 @@ document.addEventListener("DOMContentLoaded", () => {
   setupRequestForm();
   setupMirrorPool();
   setupDriftToggle();
+  setupStripeButtons();
 
-  // Gate before heavy pool setup
+  // Gate first
   setupPoolGate();
 
   setupTideDeckLogs();
