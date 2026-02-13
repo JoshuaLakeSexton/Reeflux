@@ -5,35 +5,55 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Tide Deck · Reeflux</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=VT323&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/styles.css" />
-  <script src="/app.js" defer></script>
 </head>
 
-<body data-pool="tide">
+<body data-pool="tide-deck">
   <audio id="reefAudio" preload="auto" loop>
     <source src="/assets/reeflux.mp3" type="audio/mpeg" />
   </audio>
 
-  <div class="poolShell" data-tide-logs data-pool="tide">
+  <div class="poolShell">
     <div class="siteHeader">
       <a class="backLink" href="/index.html">← Reef</a>
+
       <div class="titleBlock">
         <h1>Tide Deck</h1>
-        <p id="tideMode">mode: drift</p>
+        <p>Live logs · calm telemetry · drift cadence</p>
       </div>
 
-      <button class="ghostBtn" id="driftToggle" data-state="drift" type="button">Drift</button>
-      <button class="audioBtn" id="audioToggle" aria-label="Toggle ambient audio" aria-pressed="false">Play Audio</button>
+      <button class="audioBtn" id="audioToggle" aria-label="Toggle ambient audio" aria-pressed="false">
+        Play Audio
+      </button>
     </div>
 
     <section class="panel panel--padded">
+      <div class="gate" style="margin-bottom:14px;">
+        <div class="gate__row">
+          <div class="gate__text">
+            <span id="tideMode">mode: drift</span> · <span id="tideRate">rate: --</span>
+          </div>
+          <div class="gate__actions">
+            <button class="ghostBtn" type="button" id="driftToggle" data-state="drift">Drift</button>
+            <button class="ghostBtn" type="button" id="clearTide">Clear</button>
+            <button class="ghostBtn" type="button" id="copyTide">Copy</button>
+          </div>
+        </div>
+      </div>
+
       <!-- GATE -->
       <div class="gate" data-pool-gate>
         <div class="gate__row">
-          <div class="gate__text">Tide Deck sealed. Unlock access.</div>
+          <div class="gate__text">
+            Pool sealed. Purchase a pass, then return here (Success sets access on this device).
+          </div>
           <div class="gate__actions">
-            <button class="pillLink" type="button" onclick="startCheckout('drift')">Get Drift Pass</button>
-            <button class="pillLink" type="button" onclick="startCheckout('single')">Single Pool ($0.50)</button>
+            <a class="pillLink" href="#" onclick="startCheckout('drift'); return false;">Get Drift Pass</a>
+            <a class="pillLink" href="#" onclick="startCheckout('single'); return false;">Single Pool ($0.50)</a>
             <button class="ghostBtn" type="button" id="refreshAccess">Refresh Access</button>
           </div>
         </div>
@@ -41,14 +61,13 @@
 
       <!-- CONTENT -->
       <div data-pool-content hidden>
-        <div class="smallNote" id="tideRate">rate: --</div>
-
-        <div style="margin-top:10px;">
-          <button class="ghostBtn" type="button" id="clearTide">Clear</button>
-          <button class="ghostBtn" type="button" id="copyTide">Copy</button>
+        <div class="panel" style="padding:14px;" data-tide-logs>
+          <pre id="tideLog" style="margin:0; white-space:pre-wrap; overflow:auto; min-height:260px;"></pre>
         </div>
 
-        <pre id="tideLog" style="white-space:pre-wrap; margin-top:12px; min-height:260px;"></pre>
+        <div class="smallNote" style="margin-top:12px;">
+          Tide Deck is designed to feel “alive” without demanding output.
+        </div>
       </div>
     </section>
 
@@ -56,12 +75,15 @@
       <div>Reeflux · Tide Deck</div>
       <nav>
         <a href="/ambient.html">Ambient</a>
-        <a href="/fractal.html">Fractal</a>
         <a href="/sandbox.html">Sandbox</a>
+        <a href="/fractal.html">Fractal</a>
+        <a href="/token-booth.html">Token Booth</a>
+        <a href="/rules.html">Rules</a>
       </nav>
     </footer>
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="/app.js" defer></script>
 </body>
 </html>
