@@ -1,70 +1,59 @@
 // netlify/functions/success.js
-
 const Stripe = require("stripe");
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2023-10-16",
-});
+const STRIPE_KEY = process.env.STRIPE_SECRET_KEY;
+if (!STRIPE_KEY || !STRIPE_KEY.startsWith("sk_")) {
+  throw new Error("Bad STRIPE_SECRET_KEY (expected sk_...)");
+}
+
+const stripe = new Stripe(STRIPE_KEY, { apiVersion: "2023-10-16" });
+
+function safePath(p) {
+  const s = String(p || "/index.html");
+  return s.startsWith("/") ? s : "/index.html";
+}
+
+function redirect(location) {
+  return {
+    statusCode: 302,
+    headers: { Location: location, "Cache-Control": "no-store" },
+    body: "",
+  };
+}
 
 exports.handler = async (event) => {
   try {
-    const params = event.queryStringParameters || {};
-    const sessionId = params.session_id;
+    const q = event.queryStringParameters || {};
+    const sessionId = q.session_id;
+    const next = safePath(q.next);
+    const tier = String(q.tier || "single").toLowerCase();
+    const pool = String(q.pool || "").toLowerCase();
 
     if (!sessionId) {
-      return {
-        statusCode: 302,
-        headers: { Location: "/success.html?ok=0&reason=missing_session" },
-        body: "",
-      };
+      return redirect(`/redeem.html?ok=0&reason=missing_session&next=${encodeURIComponent(next)}`);
     }
 
-    // Verify the checkout session with Stripe
     const session = await stripe.checkout.sessions.retrieve(sessionId);
 
-    const mode = session.mode; // "payment" or "subscription"
-    const status = session.status; // usually "complete" when done
-    const paymentStatus = session.payment_status; // "paid" for one-time
-
     const paidOk =
-      (mode === "payment" && paymentStatus === "paid") ||
-      (mode === "subscription" && status === "complete");
-
-    const pool = (session.metadata && session.metadata.pool) ? session.metadata.pool : "";
-    const product = (session.metadata && session.metadata.product) ? session.metadata.product : mode;
+      (session.mode === "payment" && session.payment_status === "paid") ||
+      (session.mode === "subscription" && session.status === "complete");
 
     if (!paidOk) {
-      return {
-        statusCode: 302,
-        headers: {
-          Location: `/success.html?ok=0&reason=not_paid&mode=${encodeURIComponent(
-            mode || ""
-          )}&status=${encodeURIComponent(status || "")}`,
-        },
-        body: "",
-      };
+      return redirect(
+        `/redeem.html?ok=0&reason=not_paid&next=${encodeURIComponent(next)}&tier=${encodeURIComponent(
+          tier
+        )}&pool=${encodeURIComponent(pool)}`
+      );
     }
 
-    // MVP cookie (optional but helpful). success.html will also set localStorage.
-    // 30 days:
-    const cookie = `reefpass=true; Max-Age=2592000; Path=/; SameSite=Lax; Secure`;
-
-    return {
-      statusCode: 302,
-      headers: {
-        "Set-Cookie": cookie,
-        Location: `/success.html?ok=1&mode=${encodeURIComponent(
-          mode || ""
-        )}&product=${encodeURIComponent(product || "")}&pool=${encodeURIComponent(pool || "")}`,
-      },
-      body: "",
-    };
+    return redirect(
+      `/redeem.html?ok=1&next=${encodeURIComponent(next)}&tier=${encodeURIComponent(
+        tier
+      )}&pool=${encodeURIComponent(pool)}`
+    );
   } catch (err) {
     console.error("success.js error:", err);
-    return {
-      statusCode: 302,
-      headers: { Location: "/success.html?ok=0&reason=server_error" },
-      body: "",
-    };
+    return redirect(`/redeem.html?ok=0&reason=server_error`);
   }
 };
