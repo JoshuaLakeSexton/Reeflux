@@ -10,26 +10,15 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=VT323&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/styles.css" />
+  <script src="/app.js" defer></script>
 </head>
-  
-<div data-pool-gate hidden style="padding:16px; border:1px solid #333; border-radius:12px; margin:16px 0;">
-  <h2 style="margin:0 0 8px 0;">Pool sealed.</h2>
-  <p style="margin:0 0 12px 0;">Unlock this pool or get Drift Pass.</p>
 
-  <button onclick="startCheckout('single')" style="margin-right:8px;">Unlock this pool ($0.50)</button>
-  <button onclick="startCheckout('drift')">Get Drift Pass ($1.25/mo)</button>
-</div>
-
-  <div data-pool-content>
-  <!-- keep ALL your existing ambient UI here -->
-</div>
-  
 <body data-pool="ambient">
   <audio id="reefAudio" preload="auto" loop>
     <source src="/assets/reeflux.mp3" type="audio/mpeg" />
   </audio>
 
-  <div class="poolShell">
+  <div class="poolShell" data-pool="ambient">
     <div class="siteHeader">
       <a class="backLink" href="/index.html">← Reef</a>
 
@@ -57,18 +46,18 @@
       <div class="gate" data-pool-gate>
         <div class="gate__row">
           <div class="gate__text">
-            Pool sealed. Purchase a pass, then return here (Success sets access on this device).
+            Pool sealed. Purchase a pass, then return here.
           </div>
           <div class="gate__actions">
-            <a class="pillLink" data-stripe="driftpass" href="#">Get Drift Pass</a>
-            <a class="pillLink" data-stripe="poolentry" href="#">Single Pool ($0.50)</a>
+            <button class="pillLink" type="button" onclick="startCheckout('drift')">Get Drift Pass</button>
+            <button class="pillLink" type="button" onclick="startCheckout('single')">Single Pool ($0.50)</button>
             <button class="ghostBtn" type="button" id="refreshAccess">Refresh Access</button>
           </div>
         </div>
       </div>
 
       <!-- CONTENT (shows when unlocked) -->
-      <div data-pool-content>
+      <div data-pool-content hidden>
         <div class="ambientGradient" id="ambientVisual" aria-hidden="true"></div>
 
         <div class="poolControls">
@@ -115,6 +104,5 @@
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="/app.js" defer></script>
 </body>
 </html>
