@@ -831,3 +831,664 @@ document.addEventListener("DOMContentLoaded", () => {
   setupSandboxPool();
   setupSignalPool();
 });
+/* =========================
+   FRACTAL POOL ENGINE (Levels 2–3)
+   Paste at bottom of app.js
+========================= */
+(() => {
+  const isFractal = () => document?.body?.dataset?.pool === "fractal";
+  if (!isFractal()) return;
+
+  const $ = (id) => document.getElementById(id);
+
+  const canvas = $("fractalCanvas");
+  const badge = $("frBadge");
+
+  if (!canvas) return;
+
+  // Controls
+  const el = {
+    preset: $("frPreset"),
+    type: $("frType"),
+    iter: $("frIter"),
+    iterVal: $("frIterVal"),
+    escape: $("frEscape"),
+    escapeVal: $("frEscapeVal"),
+    power: $("frPower"),
+    powerVal: $("frPowerVal"),
+    juliaRe: $("frJuliaRe"),
+    juliaReVal: $("frJuliaReVal"),
+    juliaIm: $("frJuliaIm"),
+    juliaImVal: $("frJuliaImVal"),
+    palette: $("frPalette"),
+    cycle: $("frCycle"),
+    cycleVal: $("frCycleVal"),
+    gamma: $("frGamma"),
+    gammaVal: $("frGammaVal"),
+    contrast: $("frContrast"),
+    contrastVal: $("frContrastVal"),
+    quality: $("frQuality"),
+    renderer: $("frRenderer"),
+    random: $("frRandom"),
+    reset: $("frReset"),
+    focus: $("frFocus"),
+    copy: $("frCopy"),
+    paste: $("frPaste"),
+    png: $("frPng"),
+  };
+
+  const juliaFields = Array.from(document.querySelectorAll(".frJuliaOnly"));
+
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+
+  const state = {
+    renderer: "auto", // auto | webgl | cpu
+    type: "mandelbrot",
+    iterations: 600,
+    escape: 8,
+    power: 2,
+    julia: { re: -0.8, im: 0.156 },
+    palette: "aurora",
+    cycle: 0.35,
+    gamma: 1.1,
+    contrast: 1.05,
+    quality: 1,
+    // Camera
+    cx: -0.5,
+    cy: 0,
+    zoom: 1, // higher = closer
+    // internal
+    _drag: { on: false, x: 0, y: 0, cx: 0, cy: 0 },
+    _anim: 0,
+    _t0: performance.now(),
+    _pending: null,
+    _using: "auto",
+  };
+
+  const presets = {
+    nebula:   { type:"mandelbrot", iterations:900, escape: 10, power:2, palette:"nebula", cycle:0.55, gamma:1.15, contrast:1.08, cx:-0.55, cy:0.0, zoom: 1.6 },
+    crystal:  { type:"mandelbrot", iterations:1200, escape: 12, power:2, palette:"ice", cycle:0.25, gamma:1.05, contrast:1.15, cx:-0.7435, cy:0.1314, zoom: 18 },
+    classic:  { type:"mandelbrot", iterations:700, escape: 8, power:2, palette:"aurora", cycle:0.35, gamma:1.1, contrast:1.05, cx:-0.5, cy:0, zoom: 1 },
+    juliaMist:{ type:"julia", iterations:900, escape: 10, power:2, palette:"aurora", cycle:0.45, gamma:1.1, contrast:1.0, cx:0, cy:0, zoom: 1.7, julia:{re:-0.8, im:0.156}},
+    electric: { type:"mandelbrot", iterations:1100, escape: 12, power:2, palette:"coral", cycle:0.85, gamma:1.25, contrast:1.18, cx:-0.79, cy:0.16, zoom: 25 },
+    ink:      { type:"mandelbrot", iterations:900, escape: 10, power:2, palette:"mono", cycle:0.15, gamma:1.0, contrast:1.35, cx:-0.65, cy:0.0, zoom: 2.4 },
+    glacier:  { type:"phoenix", iterations:1200, escape: 14, power:2, palette:"ice", cycle:0.40, gamma:1.05, contrast:1.10, cx:-0.4, cy:0.2, zoom: 3.2 },
+    ship:     { type:"burningShip", iterations:1200, escape: 10, power:2, palette:"gold", cycle:0.25, gamma:1.0, contrast:1.25, cx:-1.76, cy:-0.02, zoom: 7.5 },
+  };
+
+  function applyPreset(name) {
+    const p = presets[name];
+    if (!p) return;
+    state.type = p.type ?? state.type;
+    state.iterations = p.iterations ?? state.iterations;
+    state.escape = p.escape ?? state.escape;
+    state.power = p.power ?? state.power;
+    state.palette = p.palette ?? state.palette;
+    state.cycle = p.cycle ?? state.cycle;
+    state.gamma = p.gamma ?? state.gamma;
+    state.contrast = p.contrast ?? state.contrast;
+    state.cx = p.cx ?? state.cx;
+    state.cy = p.cy ?? state.cy;
+    state.zoom = p.zoom ?? state.zoom;
+    if (p.julia) state.julia = { ...state.julia, ...p.julia };
+    syncUI();
+    requestRender(true);
+  }
+
+  function randomize() {
+    const types = ["mandelbrot","julia","burningShip","phoenix"];
+    const pals = ["aurora","nebula","coral","mono","ice","gold"];
+    state.type = types[Math.floor(Math.random()*types.length)];
+    state.iterations = Math.floor(lerp(300, 1600, Math.random())/10)*10;
+    state.escape = Math.floor(lerp(4, 20, Math.random()));
+    state.power = [2,2,2,3,4][Math.floor(Math.random()*5)];
+    state.palette = pals[Math.floor(Math.random()*pals.length)];
+    state.cycle = +(lerp(0, 1.2, Math.random()).toFixed(2));
+    state.gamma = +(lerp(0.85, 1.6, Math.random()).toFixed(2));
+    state.contrast = +(lerp(0.9, 1.6, Math.random()).toFixed(2));
+    state.zoom = +(lerp(1.0, 15.0, Math.random()).toFixed(2));
+    state.cx = lerp(-1.6, 0.6, Math.random());
+    state.cy = lerp(-0.9, 0.9, Math.random());
+    state.julia.re = lerp(-1.2, 0.8, Math.random());
+    state.julia.im = lerp(-1.0, 1.0, Math.random());
+    syncUI();
+    requestRender(true);
+  }
+
+  function resetDefaults() {
+    Object.assign(state, {
+      type:"mandelbrot",
+      iterations:600,
+      escape:8,
+      power:2,
+      julia:{re:-0.8, im:0.156},
+      palette:"aurora",
+      cycle:0.35,
+      gamma:1.1,
+      contrast:1.05,
+      quality: 1,
+      cx:-0.5, cy:0, zoom:1
+    });
+    syncUI();
+    requestRender(true);
+  }
+
+  function setBadge(text) {
+    if (badge) badge.textContent = text;
+  }
+
+  function showJuliaOnly() {
+    const on = state.type === "julia";
+    juliaFields.forEach((n) => (n.style.display = on ? "" : "none"));
+  }
+
+  function syncUI() {
+    if (!el.type) return;
+
+    el.type.value = state.type;
+    el.iter.value = String(state.iterations);
+    el.escape.value = String(state.escape);
+    el.power.value = String(state.power);
+
+    el.palette.value = state.palette;
+    el.cycle.value = String(state.cycle);
+    el.gamma.value = String(state.gamma);
+    el.contrast.value = String(state.contrast);
+
+    el.quality.value = String(state.quality);
+    el.renderer.value = state.renderer;
+
+    el.juliaRe.value = String(state.julia.re);
+    el.juliaIm.value = String(state.julia.im);
+
+    el.iterVal.textContent = String(state.iterations);
+    el.escapeVal.textContent = String(state.escape);
+    el.powerVal.textContent = String(state.power);
+    el.cycleVal.textContent = (+state.cycle).toFixed(2);
+    el.gammaVal.textContent = (+state.gamma).toFixed(2);
+    el.contrastVal.textContent = (+state.contrast).toFixed(2);
+    el.juliaReVal.textContent = (+state.julia.re).toFixed(3);
+    el.juliaImVal.textContent = (+state.julia.im).toFixed(3);
+
+    showJuliaOnly();
+  }
+
+  // =========================
+  // WebGL renderer (Level 3)
+  // =========================
+  function tryInitWebGL() {
+    const gl = canvas.getContext("webgl", { antialias: false, premultipliedAlpha: true }) ||
+               canvas.getContext("experimental-webgl");
+    if (!gl) return null;
+
+    const vertSrc = `
+      attribute vec2 aPos;
+      varying vec2 vUv;
+      void main(){
+        vUv = (aPos + 1.0) * 0.5;
+        gl_Position = vec4(aPos, 0.0, 1.0);
+      }
+    `;
+
+    const fragSrc = `
+      precision highp float;
+      varying vec2 vUv;
+
+      uniform vec2 uRes;
+      uniform float uTime;
+
+      uniform float uType;      // 0=mandel, 1=julia, 2=ship, 3=phoenix
+      uniform float uIter;
+      uniform float uEscape;
+      uniform float uPower;
+
+      uniform vec2  uJuliaC;
+      uniform vec2  uCenter;
+      uniform float uZoom;
+
+      uniform float uCycle;
+      uniform float uGamma;
+      uniform float uContrast;
+      uniform float uPal;       // 0..5
+
+      // palette helper
+      vec3 palette(float t, float pal){
+        t = fract(t);
+        // a few hand-rolled palettes
+        vec3 c;
+        if(pal < 0.5){
+          // aurora
+          c = 0.55 + 0.45*cos(6.2831*(vec3(0.0,0.25,0.5) + t) + vec3(0.2,1.6,2.2));
+        } else if(pal < 1.5){
+          // nebula
+          c = 0.5 + 0.5*cos(6.2831*(vec3(0.05,0.18,0.35) + t) + vec3(2.0,1.0,0.2));
+        } else if(pal < 2.5){
+          // coral
+          c = 0.55 + 0.45*cos(6.2831*(vec3(0.0,0.12,0.28) + t) + vec3(0.0,2.0,3.5));
+          c = mix(c, vec3(1.0,0.55,0.35), 0.20);
+        } else if(pal < 3.5){
+          // mono ink
+          c = vec3(t);
+          c = mix(vec3(0.02), vec3(0.95), smoothstep(0.1, 0.9, c.x));
+        } else if(pal < 4.5){
+          // ice
+          c = 0.55 + 0.45*cos(6.2831*(vec3(0.0,0.18,0.33) + t) + vec3(2.6,3.6,4.2));
+          c = mix(c, vec3(0.55,0.85,1.0), 0.25);
+        } else {
+          // gold
+          c = vec3(0.12) + vec3(1.2,0.85,0.35)*pow(t, 0.6);
+        }
+        return clamp(c, 0.0, 1.0);
+      }
+
+      vec2 cmul(vec2 a, vec2 b){
+        return vec2(a.x*b.x - a.y*b.y, a.x*b.y + a.y*b.x);
+      }
+
+      vec2 cpow(vec2 z, float p){
+        // polar
+        float r = length(z);
+        float th = atan(z.y, z.x);
+        float rp = pow(r, p);
+        float thp = th * p;
+        return vec2(rp*cos(thp), rp*sin(thp));
+      }
+
+      void main(){
+        // map uv to complex plane, zoomed
+        vec2 uv = (vUv*2.0 - 1.0);
+        float aspect = uRes.x / uRes.y;
+        uv.x *= aspect;
+
+        // base scale similar to classic mandelbrot view
+        float base = 1.6;
+        vec2 c = uCenter + uv * (base / max(0.00001, uZoom));
+
+        vec2 z = vec2(0.0);
+        vec2 cc = c;
+
+        if(uType > 0.5 && uType < 1.5){
+          // julia
+          z = c;
+          cc = uJuliaC;
+        }
+
+        // phoenix needs previous z
+        vec2 zPrev = vec2(0.0);
+        vec2 phoenixP = vec2(-0.5, 0.0);
+
+        float esc2 = uEscape*uEscape;
+        float i;
+        float smoothI = 0.0;
+
+        for(i = 0.0; i < 5000.0; i++){
+          if(i >= uIter) break;
+
+          if(uType > 1.5 && uType < 2.5){
+            // burning ship
+            z = vec2(abs(z.x), abs(z.y));
+            z = cpow(z, uPower) + cc;
+          } else if(uType > 2.5 && uType < 3.5){
+            // phoenix: z_{n+1} = z^2 + c + p*z_{n-1}
+            vec2 z2 = cmul(z, z);
+            vec2 nextZ = z2 + cc + vec2(phoenixP.x*zPrev.x - phoenixP.y*zPrev.y,
+                                        phoenixP.x*zPrev.y + phoenixP.y*zPrev.x);
+            zPrev = z;
+            z = nextZ;
+          } else {
+            // mandelbrot/julia
+            z = cpow(z, uPower) + cc;
+          }
+
+          if(dot(z,z) > esc2){
+            // smooth iteration count
+            float log_zn = log(dot(z,z)) / 2.0;
+            float nu = log(log_zn / log(2.0)) / log(2.0);
+            smoothI = i + 1.0 - nu;
+            break;
+          }
+        }
+
+        float t = (smoothI > 0.0 ? smoothI : i) / max(1.0, uIter);
+        t = t + uTime*uCycle;
+
+        // contrast/gamma
+        vec3 col = palette(t, uPal);
+        col = pow(col, vec3(1.0 / max(0.001, uGamma)));
+        col = (col - 0.5) * max(0.001, uContrast) + 0.5;
+
+        // deep vignette
+        float vign = smoothstep(1.25, 0.2, length(uv));
+        col *= vign;
+
+        gl_FragColor = vec4(col, 1.0);
+      }
+    `;
+
+    const compile = (type, src) => {
+      const sh = gl.createShader(type);
+      gl.shaderSource(sh, src);
+      gl.compileShader(sh);
+      if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
+        console.warn(gl.getShaderInfoLog(sh));
+        gl.deleteShader(sh);
+        return null;
+      }
+      return sh;
+    };
+
+    const vs = compile(gl.VERTEX_SHADER, vertSrc);
+    const fs = compile(gl.FRAGMENT_SHADER, fragSrc);
+    if (!vs || !fs) return null;
+
+    const prog = gl.createProgram();
+    gl.attachShader(prog, vs);
+    gl.attachShader(prog, fs);
+    gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+      console.warn(gl.getProgramInfoLog(prog));
+      return null;
+    }
+
+    gl.useProgram(prog);
+
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+      -1,-1,  1,-1, -1, 1,
+      -1, 1,  1,-1,  1, 1
+    ]), gl.STATIC_DRAW);
+
+    const aPos = gl.getAttribLocation(prog, "aPos");
+    gl.enableVertexAttribArray(aPos);
+    gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+    const uni = {
+      uRes: gl.getUniformLocation(prog, "uRes"),
+      uTime: gl.getUniformLocation(prog, "uTime"),
+      uType: gl.getUniformLocation(prog, "uType"),
+      uIter: gl.getUniformLocation(prog, "uIter"),
+      uEscape: gl.getUniformLocation(prog, "uEscape"),
+      uPower: gl.getUniformLocation(prog, "uPower"),
+      uJuliaC: gl.getUniformLocation(prog, "uJuliaC"),
+      uCenter: gl.getUniformLocation(prog, "uCenter"),
+      uZoom: gl.getUniformLocation(prog, "uZoom"),
+      uCycle: gl.getUniformLocation(prog, "uCycle"),
+      uGamma: gl.getUniformLocation(prog, "uGamma"),
+      uContrast: gl.getUniformLocation(prog, "uContrast"),
+      uPal: gl.getUniformLocation(prog, "uPal"),
+    };
+
+    return { gl, prog, uni };
+  }
+
+  // =========================
+  // CPU renderer (Level 2 fallback)
+  // =========================
+  function cpuRender(ctx, w, h) {
+    const img = ctx.createImageData(w, h);
+    const data = img.data;
+
+    const type = state.type;
+    const maxIter = state.iterations;
+    const escape2 = state.escape * state.escape;
+    const power = state.power;
+
+    const aspect = w / h;
+    const base = 1.6;
+    const scale = base / state.zoom;
+
+    // lightweight palette sampling
+    const paletteFn = (t) => {
+      t = t - Math.floor(t);
+      let r,g,b;
+      switch(state.palette){
+        case "nebula":  r = 0.5+0.5*Math.cos(6.283*(t+0.05)+2.0); g = 0.5+0.5*Math.cos(6.283*(t+0.18)+1.0); b = 0.5+0.5*Math.cos(6.283*(t+0.35)+0.2); break;
+        case "coral":   r = 0.55+0.45*Math.cos(6.283*(t+0.0)+0.0); g = 0.55+0.45*Math.cos(6.283*(t+0.12)+2.0); b = 0.55+0.45*Math.cos(6.283*(t+0.28)+3.5); r = (r*0.8+0.2*1.0); g = (g*0.8+0.2*0.55); b = (b*0.8+0.2*0.35); break;
+        case "mono":    r=g=b = t<0.5? (t*1.8) : (0.2 + (t-0.5)*1.6); break;
+        case "ice":     r = 0.55+0.45*Math.cos(6.283*(t+0.0)+2.6); g = 0.55+0.45*Math.cos(6.283*(t+0.18)+3.6); b = 0.55+0.45*Math.cos(6.283*(t+0.33)+4.2); r = (r*0.75+0.25*0.55); g = (g*0.75+0.25*0.85); b = (b*0.75+0.25*1.0); break;
+        case "gold":    r = 0.12 + 1.2*Math.pow(t,0.6); g = 0.12 + 0.85*Math.pow(t,0.6); b = 0.12 + 0.35*Math.pow(t,0.6); break;
+        default:        r = 0.55+0.45*Math.cos(6.283*(t+0.0)+0.2); g = 0.55+0.45*Math.cos(6.283*(t+0.25)+1.6); b = 0.55+0.45*Math.cos(6.283*(t+0.5)+2.2);
+      }
+      // gamma/contrast
+      r = Math.pow(clamp(r,0,1), 1/Math.max(0.001,state.gamma));
+      g = Math.pow(clamp(g,0,1), 1/Math.max(0.001,state.gamma));
+      b = Math.pow(clamp(b,0,1), 1/Math.max(0.001,state.gamma));
+      r = (r-0.5)*state.contrast + 0.5;
+      g = (g-0.5)*state.contrast + 0.5;
+      b = (b-0.5)*state.contrast + 0.5;
+      return [clamp(r,0,1), clamp(g,0,1), clamp(b,0,1)];
+    };
+
+    const cpow = (zx, zy, p) => {
+      // polar
+      const r = Math.hypot(zx, zy);
+      const th = Math.atan2(zy, zx);
+      const rp = Math.pow(r, p);
+      const thp = th * p;
+      return [rp*Math.cos(thp), rp*Math.sin(thp)];
+    };
+
+    const tNow = (performance.now() - state._t0) / 1000;
+    const cycle = tNow * state.cycle;
+
+    let idx = 0;
+    for (let y = 0; y < h; y++) {
+      const v = (y / h) * 2 - 1;
+      for (let x = 0; x < w; x++) {
+        const u = (x / w) * 2 - 1;
+        const cx = state.cx + (u * aspect) * scale;
+        const cy = state.cy + (v) * scale;
+
+        let zx = 0, zy = 0;
+        let ccx = cx, ccy = cy;
+
+        if (type === "julia") {
+          zx = cx; zy = cy;
+          ccx = state.julia.re; ccy = state.julia.im;
+        }
+
+        let zpx = 0, zpy = 0; // phoenix previous
+        let it = 0;
+        let smooth = 0;
+
+        for (; it < maxIter; it++) {
+          if (type === "burningShip") {
+            zx = Math.abs(zx); zy = Math.abs(zy);
+            const [nx, ny] = cpow(zx, zy, power);
+            zx = nx + ccx; zy = ny + ccy;
+          } else if (type === "phoenix") {
+            const nx = zx*zx - zy*zy + ccx + (-0.5*zpx);
+            const ny = 2*zx*zy + ccy + (-0.5*zpy);
+            zpx = zx; zpy = zy;
+            zx = nx; zy = ny;
+          } else {
+            const [nx, ny] = cpow(zx, zy, power);
+            zx = nx + ccx; zy = ny + ccy;
+          }
+
+          const r2 = zx*zx + zy*zy;
+          if (r2 > escape2) {
+            const log_zn = Math.log(r2) / 2;
+            const nu = Math.log(log_zn / Math.log(2)) / Math.log(2);
+            smooth = it + 1 - nu;
+            break;
+          }
+        }
+
+        const t = ((smooth || it) / maxIter) + cycle;
+        const [r,g,b] = paletteFn(t);
+
+        // vignette
+        const du = u*u + v*v;
+        const vign = clamp(1.2 - du, 0, 1);
+
+        data[idx++] = (r*vign)*255;
+        data[idx++] = (g*vign)*255;
+        data[idx++] = (b*vign)*255;
+        data[idx++] = 255;
+      }
+    }
+
+    ctx.putImageData(img, 0, 0);
+  }
+
+  // =========================
+  // Resize + render scheduling
+  // =========================
+  let glPack = null;
+  let ctx2d = null;
+
+  function resizeCanvas() {
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    const q = parseFloat(state.quality || 1);
+    const pxW = Math.max(2, Math.floor(rect.width * dpr * q));
+    const pxH = Math.max(2, Math.floor(rect.height * dpr * q));
+    if (canvas.width !== pxW || canvas.height !== pxH) {
+      canvas.width = pxW;
+      canvas.height = pxH;
+    }
+  }
+
+  function pickRenderer() {
+    const want = state.renderer;
+    if (want === "cpu") return "cpu";
+    if (want === "webgl") return "webgl";
+    return "auto";
+  }
+
+  function ensureContext() {
+    const want = pickRenderer();
+
+    // Prefer WebGL unless forced CPU
+    if (want !== "cpu") {
+      if (!glPack) glPack = tryInitWebGL();
+      if (glPack) {
+        ctx2d = null;
+        state._using = "webgl";
+        setBadge(`Renderer: WebGL`);
+        return;
+      }
+      if (want === "webgl") {
+        // forced webgl but failed
+        setBadge(`Renderer: WebGL (unavailable)`);
+      }
+    }
+
+    // CPU fallback
+    if (!ctx2d) ctx2d = canvas.getContext("2d", { alpha: false, desynchronized: true });
+    glPack = null;
+    state._using = "cpu";
+    setBadge(`Renderer: CPU`);
+  }
+
+  function renderFrame() {
+    resizeCanvas();
+    ensureContext();
+
+    const w = canvas.width;
+    const h = canvas.height;
+
+    if (state._using === "webgl" && glPack) {
+      const { gl, uni } = glPack;
+      gl.viewport(0, 0, w, h);
+
+      const t = (performance.now() - state._t0) / 1000;
+
+      const typeMap = { mandelbrot:0, julia:1, burningShip:2, phoenix:3 };
+      const palMap = { aurora:0, nebula:1, coral:2, mono:3, ice:4, gold:5 };
+
+      gl.uniform2f(uni.uRes, w, h);
+      gl.uniform1f(uni.uTime, t);
+      gl.uniform1f(uni.uType, typeMap[state.type] ?? 0);
+      gl.uniform1f(uni.uIter, state.iterations);
+      gl.uniform1f(uni.uEscape, state.escape);
+      gl.uniform1f(uni.uPower, state.power);
+      gl.uniform2f(uni.uJuliaC, state.julia.re, state.julia.im);
+      gl.uniform2f(uni.uCenter, state.cx, state.cy);
+      gl.uniform1f(uni.uZoom, state.zoom);
+      gl.uniform1f(uni.uCycle, state.cycle);
+      gl.uniform1f(uni.uGamma, state.gamma);
+      gl.uniform1f(uni.uContrast, state.contrast);
+      gl.uniform1f(uni.uPal, palMap[state.palette] ?? 0);
+
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      return;
+    }
+
+    if (ctx2d) cpuRender(ctx2d, w, h);
+  }
+
+  function requestRender(forceImmediate = false) {
+    if (state._pending) cancelAnimationFrame(state._pending);
+    if (forceImmediate) {
+      state._pending = requestAnimationFrame(() => renderFrame());
+      return;
+    }
+    state._pending = requestAnimationFrame(() => renderFrame());
+  }
+
+  // Animate if cycle > 0 (Level 3 looks alive)
+  function tick() {
+    state._anim = requestAnimationFrame(tick);
+    if (state.cycle > 0.001) renderFrame();
+  }
+
+  // =========================
+  // Camera interaction
+  // =========================
+  function screenToWorld(px, py) {
+    const rect = canvas.getBoundingClientRect();
+    const u = ((px - rect.left) / rect.width) * 2 - 1;
+    const v = ((py - rect.top) / rect.height) * 2 - 1;
+    const aspect = rect.width / rect.height;
+    const base = 1.6;
+    const scale = base / state.zoom;
+    return {
+      x: state.cx + (u * aspect) * scale,
+      y: state.cy + (v) * scale
+    };
+  }
+
+  canvas.addEventListener("mousedown", (e) => {
+    state._drag.on = true;
+    state._drag.x = e.clientX;
+    state._drag.y = e.clientY;
+    state._drag.cx = state.cx;
+    state._drag.cy = state.cy;
+  });
+
+  window.addEventListener("mouseup", () => { state._drag.on = false; });
+
+  window.addEventListener("mousemove", (e) => {
+    if (!state._drag.on) return;
+    const rect = canvas.getBoundingClientRect();
+    const dx = (e.clientX - state._drag.x) / rect.width;
+    const dy = (e.clientY - state._drag.y) / rect.height;
+    const aspect = rect.width / rect.height;
+    const base = 1.6;
+    const scale = base / state.zoom;
+    state.cx = state._drag.cx - dx * 2 * aspect * scale;
+    state.cy = state._drag.cy - dy * 2 * scale;
+    requestRender();
+  });
+
+  canvas.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    const zoomFactor = Math.pow(1.08, -Math.sign(e.deltaY));
+    const before = screenToWorld(e.clientX, e.clientY);
+    state.zoom = clamp(state.zoom * zoomFactor, 0.15, 2000);
+    const after = screenToWorld(e.clientX, e.clientY);
+    // keep cursor point pinned
+    state.cx += (before.x - after.x);
+    state.cy += (before.y - after.y);
+    requestRender();
+  }, { passive: false });
+
+  canvas.addEventListener("dblclick", (e) => {
+    const before = screenToWorld(e.clientX, e.clientY);
+    state.zoom = clamp(state.zoom * 1.6, 0.15, 2000);
+    const after
+::contentReference[oaicite:0]{index=0}
