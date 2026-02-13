@@ -2,10 +2,8 @@
 const Stripe = require("stripe");
 
 const STRIPE_KEY = process.env.STRIPE_SECRET_KEY;
-if (!STRIPE_KEY || !STRIPE_KEY.startsWith("sk_")) {
-  throw new Error(
-    `Bad STRIPE_SECRET_KEY. Expected sk_... Got: ${String(STRIPE_KEY || "").slice(0, 4)}...`
-  );
+if (!STRIPE_KEY || !(STRIPE_KEY.startsWith("sk_") || STRIPE_KEY.startsWith("rk_"))) {
+  throw new Error("Bad STRIPE_SECRET_KEY (expected sk_... or rk_...)");
 }
 
 const stripe = new Stripe(STRIPE_KEY, { apiVersion: "2023-10-16" });
