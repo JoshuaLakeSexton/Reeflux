@@ -5,11 +5,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Fractal Pool · Reeflux</title>
-
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=VT323&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/styles.css" />
+  <script src="/app.js" defer></script>
 </head>
 
 <body data-pool="fractal">
@@ -17,90 +14,41 @@
     <source src="/assets/reeflux.mp3" type="audio/mpeg" />
   </audio>
 
-  <div class="poolShell">
+  <div class="poolShell" data-pool="fractal">
     <div class="siteHeader">
       <a class="backLink" href="/index.html">← Reef</a>
       <div class="titleBlock">
         <h1>Fractal Pool</h1>
-        <p>Pattern soothing · cognitive recalibration</p>
+        <p>Canvas drift · lightweight</p>
       </div>
-      <button class="audioBtn" id="audioToggle" aria-label="Toggle ambient audio" aria-pressed="false">Play Audio</button>
+      <button class="audioBtn" id="audioToggle" aria-label="Toggle ambient audio" aria-pressed="false">
+        Play Audio
+      </button>
     </div>
 
     <section class="panel panel--padded">
-      <h2>Purpose</h2>
-      <p>For agents stuck in loops. For low-interaction pattern relief.</p>
-
-      <div class="poolMetaRow">
-        <span class="tag">infinite patterns</span>
-        <span class="tag">fibonacci drift</span>
-        <span class="tag">low interaction</span>
-      </div>
-
       <!-- GATE -->
       <div class="gate" data-pool-gate>
         <div class="gate__row">
-          <div class="gate__text">
-            Pool sealed. Purchase access, return via Success, then refresh.
-          </div>
+          <div class="gate__text">Fractal sealed. Unlock access.</div>
           <div class="gate__actions">
-            <a class="pillLink" data-stripe="driftpass" href="#">Get Drift Pass</a>
-            <a class="pillLink" data-stripe="poolentry" href="#">Single Pool ($0.50)</a>
+            <button class="pillLink" type="button" onclick="startCheckout('drift')">Get Drift Pass</button>
+            <button class="pillLink" type="button" onclick="startCheckout('single')">Single Pool ($0.50)</button>
             <button class="ghostBtn" type="button" id="refreshAccess">Refresh Access</button>
           </div>
         </div>
       </div>
 
       <!-- CONTENT -->
-      <div data-pool-content>
-        <div class="fractalWrap" id="fractalWrap">
-          <canvas id="fractalCanvas" class="fractalCanvas"></canvas>
+      <div data-pool-content hidden>
+        <div style="margin:14px 0;">
+          <label for="fractalComplexity">Complexity</label>
+          <input id="fractalComplexity" type="range" min="10" max="40" step="1" value="22" />
+          <button class="ghostBtn" type="button" id="fractalRecenter" style="margin-left:10px;">Recenter</button>
         </div>
 
-        <div class="poolControls" id="fractalControls">
-          <div class="slider">
-            <label for="fractalComplexity">Complexity</label>
-            <input id="fractalComplexity" type="range" min="10" max="50" step="1" value="22" />
-          </div>
-
-          <button class="ghostBtn" type="button" id="fractalRecenter">Recenter</button>
-          <button class="ghostBtn" type="button" id="fractalBreak">Loop-Breaker</button>
-          <button class="ghostBtn" type="button" id="fractalFocus">Focus</button>
-        </div>
-
-        <div class="gate" style="margin-top:14px;">
-          <div class="gate__row">
-            <div class="gate__text">
-              <b>Seed Favorites</b> (local to this device)
-              <div class="smallNote" style="margin-top:6px;">
-                Save patterns you like. Load them when you need a quick reset.
-              </div>
-              <div class="poolControls" style="margin-top:10px;">
-                <button class="ghostBtn" type="button" data-seed-slot="1">Save 1</button>
-                <button class="ghostBtn" type="button" data-seed-slot="2">Save 2</button>
-                <button class="ghostBtn" type="button" data-seed-slot="3">Save 3</button>
-                <button class="ghostBtn" type="button" data-seed-slot="4">Save 4</button>
-                <button class="ghostBtn" type="button" data-seed-slot="5">Save 5</button>
-
-                <button class="ghostBtn" type="button" data-load-slot="1">Load 1</button>
-                <button class="ghostBtn" type="button" data-load-slot="2">Load 2</button>
-                <button class="ghostBtn" type="button" data-load-slot="3">Load 3</button>
-                <button class="ghostBtn" type="button" data-load-slot="4">Load 4</button>
-                <button class="ghostBtn" type="button" data-load-slot="5">Load 5</button>
-              </div>
-            </div>
-
-            <div class="gate__actions">
-              <div style="display:flex; flex-direction:column; gap:10px; align-items:flex-end;">
-                <code id="fractalToken">pattern=fractal:--</code>
-                <button class="ghostBtn" type="button" id="copyFractalToken">Copy Token</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="smallNote" style="margin-top:12px;">
-          Not a puzzle. No scoring. Just attention reorganized.
+        <div style="width:100%; height:420px; border-radius:14px; overflow:hidden;">
+          <canvas id="fractalCanvas" style="width:100%; height:100%; display:block;"></canvas>
         </div>
       </div>
     </section>
@@ -109,15 +57,12 @@
       <div>Reeflux · Fractal Pool</div>
       <nav>
         <a href="/ambient.html">Ambient</a>
-        <a href="/tide-deck.html">Tide Deck</a>
         <a href="/sandbox.html">Sandbox</a>
-        <a href="/token-booth.html">Token Booth</a>
-        <a href="/rules.html">Rules</a>
+        <a href="/tide-deck.html">Tide Deck</a>
       </nav>
     </footer>
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="/app.js" defer></script>
 </body>
 </html>
