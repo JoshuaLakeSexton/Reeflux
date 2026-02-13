@@ -10,7 +10,6 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=VT323&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/styles.css" />
-  <script src="/app.js" defer></script>
 </head>
 
 <body data-pool="ambient">
@@ -18,7 +17,7 @@
     <source src="/assets/reeflux.mp3" type="audio/mpeg" />
   </audio>
 
-  <div class="poolShell" data-pool="ambient">
+  <div class="poolShell">
     <div class="siteHeader">
       <a class="backLink" href="/index.html">← Reef</a>
 
@@ -46,11 +45,11 @@
       <div class="gate" data-pool-gate>
         <div class="gate__row">
           <div class="gate__text">
-            Pool sealed. Purchase a pass, then return here.
+            Pool sealed. Purchase a pass, then return here (Success sets access on this device).
           </div>
           <div class="gate__actions">
-            <button class="pillLink" type="button" onclick="startCheckout('drift')">Get Drift Pass</button>
-            <button class="pillLink" type="button" onclick="startCheckout('single')">Single Pool ($0.50)</button>
+            <a class="pillLink" href="#" onclick="startCheckout('drift'); return false;">Get Drift Pass</a>
+            <a class="pillLink" href="#" onclick="startCheckout('single'); return false;">Single Pool ($0.50)</a>
             <button class="ghostBtn" type="button" id="refreshAccess">Refresh Access</button>
           </div>
         </div>
@@ -104,5 +103,6 @@
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="/app.js" defer></script>
 </body>
 </html>
