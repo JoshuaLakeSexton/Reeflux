@@ -1,16 +1,28 @@
 // netlify/functions/checkout.js
 const Stripe = require("stripe");
 
-const STRIPE_KEY = process.env.STRIPE_SECRET_KEY;
+// IMPORTANT: trim to remove hidden whitespace/newlines
+const STRIPE_KEY = String(process.env.STRIPE_SECRET_KEY || "").trim();
+
+// Accept standard AND restricted keys
 if (!STRIPE_KEY || !(STRIPE_KEY.startsWith("sk_") || STRIPE_KEY.startsWith("rk_"))) {
-  throw new Error("Bad STRIPE_SECRET_KEY (expected sk_... or rk_...)");
+  throw new Error(
+    `Bad STRIPE_SECRET_KEY. Expected sk_... or rk_... Got: ${STRIPE_KEY.slice(0, 4)}...`
+  );
 }
 
 const stripe = new Stripe(STRIPE_KEY, { apiVersion: "2023-10-16" });
 
-// Prices
-const PRICE_DRIFT = process.env.PRICE_DRIFT || "price_1Sw8AYPSnae9DdPY6fG3zhH7"; // recurring
-const PRICE_SINGLE = process.env.PRICE_SINGLE || "price_1Sw88QPSnae9DdPYz2kKFsFF"; // one-time
+// IMPORTANT: read the env var names you actually have in Netlify
+const PRICE_DRIFT =
+  process.env.PRICE_DRIFT_PASS ||
+  process.env.PRICE_DRIFT ||
+  "price_1Sw8AYPSnae9DdPY6fG3zhH7";
+
+const PRICE_SINGLE =
+  process.env.PRICE_SINGLE_POOL ||
+  process.env.PRICE_SINGLE ||
+  "price_1Sw88QPSnae9DdPYz2kKFsFF";
 
 function cleanSiteUrl(url) {
   return String(url || "https://reeflux.com").replace(/\/+$/, "");
