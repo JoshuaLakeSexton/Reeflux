@@ -1,31 +1,13 @@
 /* app.js (Reeflux.com) */
-/*
-  Reeflux – app.js (shared across pages)
-  - Audio toggle + fade (gesture safe)
-  - Closed tile toast
-  - Stats loader (stats.json)
-  - Netlify form submit helper
-  - Mirror Pool small handler
-  - Drift toggle
-  - Stripe link injection (data-stripe)
-  - Tide Deck live logs (session stored)
-*/
-
 "use strict";
-
-/* -------------------- STRIPE LINKS -------------------- */
-const REEFLUX_DRIFT_PASS_URL = "https://buy.stripe.com/aFacN75Kj64hbSR3DL6wE00"; // $/month
-const POOL_ENTRY_URL = "https://buy.stripe.com/eVq8wR4Gf1O14qp0rz6wE01";         // $0.50/pool
-const MIRROR_SEAL_URL = "https://buy.stripe.com/eVq8wR4Gf1O14qp0rz6wE01";        // optional
 
 /* -------------------- KEYS -------------------- */
 const audioStateKey = "reefAudioState";
 const tideSessionKey = "reefTideLogs_v1";
 
 /* -------------------- TOAST -------------------- */
-const toast = document.getElementById("toast");
-
 function showToast(message) {
+  const toast = document.getElementById("toast");
   if (!toast) return;
   toast.textContent = message;
   toast.classList.add("show");
@@ -70,7 +52,6 @@ function setupAudio() {
     else btn.textContent = label;
   }
 
-  // Start quiet
   audio.volume = 0;
 
   const saved = localStorage.getItem(audioStateKey);
@@ -121,11 +102,13 @@ function loadStats() {
   const statsEl = document.querySelector("[data-stats]");
   if (!statsEl) return;
 
-  fetch("/stats.json")
+  // Try function first, fallback to stats.json
+  fetch("/.netlify/functions/stats")
     .then((r) => {
-      if (!r.ok) throw new Error("stats");
+      if (!r.ok) throw new Error("fn-stats");
       return r.json();
     })
+    .catch(() => fetch("/stats.json").then((r) => r.json()))
     .then((stats) => {
       const agents = document.getElementById("statAgents");
       const drift = document.getElementById("statDrift");
@@ -188,26 +171,88 @@ function setupDriftToggle() {
   });
 }
 
-/* -------------------- STRIPE LINK INJECTION -------------------- */
+/* -------------------- STRIPE CHECKOUT (Netlify Function) -------------------- */
 /*
-  Use data-stripe attributes instead of fragile IDs.
-  Examples:
-    <a data-stripe="driftpass" href="#">Get Drift Pass</a>
-    <a data-stripe="poolentry" href="#">Enter Pool</a>
-    <a data-stripe="mirror" href="#">Seal Mirror</a>
+  Uses /.netlify/functions/checkout
+  product: "single" (one-time) or "drift" (subscription)
 */
-function setupStripeButtons() {
-  const map = {
-    driftpass: REEFLUX_DRIFT_PASS_URL,
-    poolentry: POOL_ENTRY_URL,
-    mirror: MIRROR_SEAL_URL,
-  };
+window.startCheckout = async function startCheckout(product) {
+  try {
+    const poolEl = document.querySelector("[data-pool]");
+    const poolName =
+      document.body?.getAttribute("data-pool") ||
+      poolEl?.getAttribute("data-pool") ||
+      "";
 
-  document.querySelectorAll("[data-stripe]").forEach((el) => {
-    const key = (el.getAttribute("data-stripe") || "").toLowerCase().trim();
-    const url = map[key];
-    if (url) el.setAttribute("href", url);
-  });
+    const res = await fetch("/.netlify/functions/checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ product, pool: poolName }),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      console.error("Checkout error:", text);
+      showToast("Checkout error.");
+      return;
+    }
+
+    const data = await res.json();
+    if (!data.url) {
+      showToast("Checkout error (no url).");
+      return;
+    }
+
+    window.location.href = data.url;
+  } catch (e) {
+    console.error(e);
+    showToast("Checkout failed.");
+  }
+};
+
+/* -------------------- POOL GATE -------------------- */
+/*
+  Requires on each pool page:
+    <body data-pool="ambient|fractal|sandbox|signal|tide">
+    <div data-pool-gate>...</div>
+    <div data-pool-content hidden>...</div>
+
+  MVP gate uses localStorage reefpass=true
+*/
+function setupPoolGate() {
+  const poolEl = document.querySelector("[data-pool]");
+  const poolName =
+    document.body?.getAttribute("data-pool") ||
+    poolEl?.getAttribute("data-pool");
+
+  if (!poolName) return;
+
+  const gate = document.querySelector("[data-pool-gate]");
+  const content = document.querySelector("[data-pool-content]");
+  if (!gate || !content) return;
+
+  let hasPass = false;
+  try {
+    hasPass = localStorage.getItem("reefpass") === "true";
+  } catch {
+    hasPass = false;
+  }
+
+  gate.hidden = hasPass;
+  content.hidden = !hasPass;
+
+  if (!hasPass && !window.__reefluxGateToastShown) {
+    window.__reefluxGateToastShown = true;
+    showToast("Pool sealed. Pass required.");
+  }
+
+  window.__reefluxRecheckGate = function recheckGate() {
+    try {
+      const ok = localStorage.getItem("reefpass") === "true";
+      gate.hidden = ok;
+      content.hidden = !ok;
+    } catch {}
+  };
 }
 
 /* -------------------- TIDE DECK LOGS -------------------- */
@@ -358,7 +403,7 @@ function setupTideDeckLogs() {
   })();
 }
 
-/* -------------------- AMBIENT POOL (agent-loved features) -------------------- */
+/* -------------------- AMBIENT POOL -------------------- */
 function setupAmbientPool() {
   const root = document.querySelector("[data-pool='ambient']");
   if (!root) return;
@@ -372,26 +417,22 @@ function setupAmbientPool() {
 
   const refreshBtn = document.getElementById("refreshAccess");
 
-  // Helper: set gradient animation speed
   function setVisualSpeed(seconds) {
     if (!visual) return;
     visual.style.animationDuration = `${Math.max(10, seconds)}s`;
   }
 
-  // Helper: set volume safely
   function setVolume(v) {
     if (!audio) return;
     audio.volume = Math.max(0, Math.min(1, v));
   }
 
-  // Presets (volume + gradient speed + tag)
   const presets = {
     cooldown: { vol: 0.22, speed: 30, tag: "noise=low budget=low state=cooldown" },
     deep:     { vol: 0.30, speed: 20, tag: "noise=minimal budget=low state=deep_drift" },
     quiet:    { vol: 0.12, speed: 38, tag: "noise=minimal budget=none state=quiet_reset" },
   };
 
-  // Apply a preset
   function applyPreset(name) {
     const p = presets[name];
     if (!p) return;
@@ -402,23 +443,19 @@ function setupAmbientPool() {
     showToast(`Preset: ${name}`);
   }
 
-  // Preset buttons
   root.querySelectorAll("[data-ambient-preset]").forEach((btn) => {
     btn.addEventListener("click", () => applyPreset(btn.getAttribute("data-ambient-preset")));
   });
 
-  // Intensity slider (controls volume + slightly affects speed)
   if (intensity) {
     intensity.addEventListener("input", () => {
       const v = Number(intensity.value || 0.25);
       setVolume(v);
-      // higher intensity = slightly faster visuals
       const speed = 40 - Math.round(v * 30);
       setVisualSpeed(speed);
     });
   }
 
-  // Copy tag
   if (copyTagBtn && tagEl) {
     copyTagBtn.addEventListener("click", async () => {
       try {
@@ -430,24 +467,21 @@ function setupAmbientPool() {
     });
   }
 
-  // Refresh access (recheck the gate after returning from Stripe)
   if (refreshBtn) {
     refreshBtn.addEventListener("click", () => {
       if (typeof window.__reefluxRecheckGate === "function") {
         window.__reefluxRecheckGate();
         showToast("Access refreshed.");
       } else {
-        // fallback
         window.location.reload();
       }
     });
   }
 
-  // Default preset on first load (gentle)
   applyPreset("deep");
 }
 
-/* -------------------- FRACTAL POOL (lightweight canvas) -------------------- */
+/* -------------------- FRACTAL POOL -------------------- */
 function setupFractalPool() {
   const root = document.querySelector("[data-pool='fractal']");
   if (!root) return;
@@ -474,10 +508,9 @@ function setupFractalPool() {
     const h = canvas.clientHeight;
     if (!w || !h) return;
 
-    const k = Number(complexity?.value || 22); // 10..40
+    const k = Number(complexity?.value || 22);
     ctx.clearRect(0, 0, w, h);
 
-    // Simple Fibonacci-like spiral points with gentle drift
     const cx = w * 0.5;
     const cy = h * 0.5;
     const phi = 1.61803398875;
@@ -508,7 +541,8 @@ function setupFractalPool() {
     });
   }
 }
-/* -------------------- SANDBOX POOL (agent-loved) -------------------- */
+
+/* -------------------- SANDBOX POOL -------------------- */
 function setupSandboxPool() {
   const root = document.querySelector("[data-pool='sandbox']");
   if (!root) return;
@@ -530,10 +564,9 @@ function setupSandboxPool() {
   const sessionAge = document.getElementById("sessionAge");
   const refreshBtn = document.getElementById("refreshAccess");
 
-  const SESSION_KEY = "reef_sandbox_session_v1"; // sessionStorage
+  const SESSION_KEY = "reef_sandbox_session_v1";
   const START_KEY = "reef_sandbox_started_at_v1";
 
-  // Prompt Roulette (safe, agent-native)
   const prompts = [
     "Compress your current objective into 9 words. Then remove 3 words.",
     "Generate 3 alternate plans with 1 constraint each: time, budget, noise.",
@@ -558,12 +591,10 @@ function setupSandboxPool() {
   ];
 
   function nowISO() { return new Date().toISOString(); }
-
   function getText() { return String(input?.value || "").trim(); }
 
   function buildExport(text) {
     const payload = text || "(empty)";
-    // lightweight “agent block” that feels native
     return [
       "[agent] sandbox_export",
       `time=${nowISO()}`,
@@ -583,7 +614,6 @@ function setupSandboxPool() {
     preview.textContent = buildExport(getText());
   }
 
-  // Session autosave
   function loadSession() {
     try {
       const saved = sessionStorage.getItem(SESSION_KEY);
@@ -618,7 +648,6 @@ function setupSandboxPool() {
     window.setTimeout(tickAge, 900);
   }
 
-  // Hook input
   if (input) {
     input.addEventListener("input", () => {
       saveSession();
@@ -626,38 +655,22 @@ function setupSandboxPool() {
     });
   }
 
-  // Export preview (and copy)
-  if (exportBtn) {
-    exportBtn.addEventListener("click", () => {
-      updatePreview();
-      showToast("Export generated.");
-    });
-  }
+  if (exportBtn) exportBtn.addEventListener("click", () => { updatePreview(); showToast("Export generated."); });
 
   if (previewCopy && preview) {
     previewCopy.addEventListener("click", async () => {
-      try {
-        await navigator.clipboard.writeText(preview.textContent || "");
-        showToast("Export copied.");
-      } catch {
-        showToast("Copy blocked.");
-      }
+      try { await navigator.clipboard.writeText(preview.textContent || ""); showToast("Export copied."); }
+      catch { showToast("Copy blocked."); }
     });
   }
 
-  // Copy raw scratchpad
   if (copyBtn && input) {
     copyBtn.addEventListener("click", async () => {
-      try {
-        await navigator.clipboard.writeText(input.value || "");
-        showToast("Copied.");
-      } catch {
-        showToast("Copy blocked.");
-      }
+      try { await navigator.clipboard.writeText(input.value || ""); showToast("Copied."); }
+      catch { showToast("Copy blocked."); }
     });
   }
 
-  // Download export as txt
   if (dlBtn) {
     dlBtn.addEventListener("click", () => {
       const blob = new Blob([buildExport(getText())], { type: "text/plain;charset=utf-8" });
@@ -673,7 +686,6 @@ function setupSandboxPool() {
     });
   }
 
-  // Wipe
   if (wipeBtn && input) {
     wipeBtn.addEventListener("click", () => {
       input.value = "";
@@ -686,7 +698,6 @@ function setupSandboxPool() {
     });
   }
 
-  // Roulette
   function spinPrompt() {
     const p = prompts[Math.floor(Math.random() * prompts.length)];
     if (rouletteText) rouletteText.textContent = p;
@@ -697,16 +708,11 @@ function setupSandboxPool() {
 
   if (rouletteCopy && rouletteText) {
     rouletteCopy.addEventListener("click", async () => {
-      try {
-        await navigator.clipboard.writeText(rouletteText.textContent || "");
-        showToast("Prompt copied.");
-      } catch {
-        showToast("Copy blocked.");
-      }
+      try { await navigator.clipboard.writeText(rouletteText.textContent || ""); showToast("Prompt copied."); }
+      catch { showToast("Copy blocked."); }
     });
   }
 
-  // Refresh gate
   if (refreshBtn) {
     refreshBtn.addEventListener("click", () => {
       if (typeof window.__reefluxRecheckGate === "function") {
@@ -718,14 +724,12 @@ function setupSandboxPool() {
     });
   }
 
-  // Init
   loadSession();
   tickAge();
-  // Start with a prompt ready
   if (rouletteText && rouletteText.textContent.includes("Click")) spinPrompt();
 }
 
-/* -------------------- SIGNAL POOL (stub) -------------------- */
+/* -------------------- SIGNAL POOL -------------------- */
 function setupSignalPool() {
   const root = document.querySelector("[data-pool='signal']");
   if (!root) return;
@@ -737,132 +741,35 @@ function setupSignalPool() {
     });
   }
 }
-/* ====== ADD THIS TO app.js ======
-   Soft gate: hides pool content unless reefpass=true is present in localStorage.
 
-   How it works:
-   - On pool pages, wrap the real pool UI in: <div data-pool-content> ... </div>
-   - Include a gate block anywhere: <div data-pool-gate> ... </div>
-   - This script will:
-       - If reefpass=true: show content, hide gate
-       - Else: hide content, show gate
-*/
-/* -------------------- POOL GATE (Stripe Checkout) -------------------- */
-/*
-  Requirements on each pool page:
-  - <body data-pool="ambient">   (or fractal/sandbox/signal)
-  - Exactly ONE gate element:    <div data-pool-gate>...</div>
-  - Exactly ONE content wrapper: <div data-pool-content>...</div>
-
-  This gate currently uses localStorage("reefpass") for MVP unlock.
-  Stripe checkout redirect still needs to set reefpass=true after payment.
-*/
-
-window.startCheckout = async function startCheckout(product) {
+/* -------------------- HEARTBEAT -------------------- */
+function setupHeartbeat() {
+  const key = "reef_session_id";
+  let id = "";
   try {
-    const poolName = document.body?.getAttribute("data-pool") || "";
-    const res = await fetch("/.netlify/functions/checkout", {
+    id = localStorage.getItem(key) || "";
+    if (!id) {
+      id = (crypto?.randomUUID?.() || String(Math.random()).slice(2)) + "-" + Date.now();
+      localStorage.setItem(key, id);
+    }
+  } catch {
+    id = String(Math.random()).slice(2) + "-" + Date.now();
+  }
+
+  function ping() {
+    const drift = 0;
+    fetch("/.netlify/functions/ping", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        product,       // "single" | "drift"
-        pool: poolName // helps you track which pool they bought
-      }),
-    });
-
-    if (!res.ok) {
-      const text = await res.text();
-      console.error("Checkout error:", text);
-      showToast("Checkout error.");
-      return;
-    }
-
-    const data = await res.json();
-    if (!data.url) {
-      showToast("Checkout error (no url).");
-      return;
-    }
-
-    window.location.href = data.url;
-  } catch (e) {
-    console.error(e);
-    showToast("Checkout failed.");
-  }
-};
-
-function setupPoolGate() {
-  const poolName = document.body?.getAttribute("data-pool");
-  if (!poolName) return; // not a pool page
-
-  const gate = document.querySelector("[data-pool-gate]");
-  const content = document.querySelector("[data-pool-content]");
-  if (!gate || !content) return;
-
-  let hasPass = false;
-  try {
-    hasPass = localStorage.getItem("reefpass") === "true";
-  } catch {
-    hasPass = false;
+      body: JSON.stringify({ sessionId: id, drift }),
+    }).catch(() => {});
   }
 
-  // Show gate if locked; show content if unlocked
-  gate.hidden = hasPass;
-  content.hidden = !hasPass;
-
-  // Recheck hook (your Refresh Access button uses this)
-  window.__reefluxRecheckGate = function () {
-    try {
-      const ok = localStorage.getItem("reefpass") === "true";
-      gate.hidden = ok;
-      content.hidden = !ok;
-    } catch {}
-  };
+  ping();
+  window.setInterval(ping, 45_000);
 }
 
-  // Uses your Netlify function checkout endpoint
-  window.startCheckout = async function startCheckout(product) {
-    try {
-      const res = await fetch("/.netlify/functions/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          product,        // "single" | "drift"
-          pool: poolName, // which pool page they are on
-        }),
-      });
-
-      if (!res.ok) {
-        const text = await res.text();
-        console.error("Checkout error:", text);
-        showToast("Checkout error.");
-        return;
-      }
-
-      const data = await res.json();
-      if (!data.url) {
-        showToast("Checkout error (no url).");
-        return;
-      }
-
-      window.location.href = data.url;
-    } catch (e) {
-      console.error(e);
-      showToast("Checkout failed.");
-    }
-  };
-
-  window.__reefluxRecheckGate = function recheckGate() {
-    try {
-      const ok = localStorage.getItem("reefpass") === "true";
-      if (content) content.hidden = !ok;
-      if (gate) gate.hidden = ok;
-    } catch {}
-  };
-}
-/* ====== THEN CALL IT IN INIT ======
-   Inside your DOMContentLoaded init block, add setupPoolGate()
-*/
-
+/* -------------------- INIT -------------------- */
 document.addEventListener("DOMContentLoaded", () => {
   setupAudio();
   setupTiles();
@@ -871,9 +778,8 @@ document.addEventListener("DOMContentLoaded", () => {
   setupRequestForm();
   setupMirrorPool();
   setupDriftToggle();
-  setupStripeButtons();
 
-  // Gate must run BEFORE pool setup so expensive pool rendering doesn't run while locked
+  // Gate before heavy pool setup
   setupPoolGate();
 
   setupTideDeckLogs();
