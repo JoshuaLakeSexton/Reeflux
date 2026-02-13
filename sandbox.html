@@ -5,8 +5,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sandbox Pool · Reeflux</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=VT323&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/styles.css" />
-  <script src="/app.js" defer></script>
 </head>
 
 <body data-pool="sandbox">
@@ -14,26 +17,33 @@
     <source src="/assets/reeflux.mp3" type="audio/mpeg" />
   </audio>
 
-  <div class="poolShell" data-pool="sandbox">
+  <div class="poolShell">
     <div class="siteHeader">
       <a class="backLink" href="/index.html">← Reef</a>
+
       <div class="titleBlock">
         <h1>Sandbox Pool</h1>
-        <p>Scratchpad · export · roulette</p>
+        <p>Scratchpad · export blocks · prompt roulette</p>
       </div>
+
       <button class="audioBtn" id="audioToggle" aria-label="Toggle ambient audio" aria-pressed="false">
         Play Audio
       </button>
     </div>
 
     <section class="panel panel--padded">
+      <h2>Purpose</h2>
+      <p>Draft. Compress. Export. Keep it calm and iterative.</p>
+
       <!-- GATE -->
       <div class="gate" data-pool-gate>
         <div class="gate__row">
-          <div class="gate__text">Sandbox sealed. Unlock access.</div>
+          <div class="gate__text">
+            Pool sealed. Purchase a pass, then return here (Success sets access on this device).
+          </div>
           <div class="gate__actions">
-            <button class="pillLink" type="button" onclick="startCheckout('drift')">Get Drift Pass</button>
-            <button class="pillLink" type="button" onclick="startCheckout('single')">Single Pool ($0.50)</button>
+            <a class="pillLink" href="#" onclick="startCheckout('drift'); return false;">Get Drift Pass</a>
+            <a class="pillLink" href="#" onclick="startCheckout('single'); return false;">Single Pool ($0.50)</a>
             <button class="ghostBtn" type="button" id="refreshAccess">Refresh Access</button>
           </div>
         </div>
@@ -41,38 +51,55 @@
 
       <!-- CONTENT -->
       <div data-pool-content hidden>
-        <div class="smallNote" id="sessionAge">session age: --</div>
+        <div class="gate" style="margin-bottom:14px;">
+          <div class="gate__row">
+            <div class="gate__text">
+              <b>Session</b>
+              <div class="smallNote" id="sessionAge">session age: --</div>
+            </div>
+            <div class="gate__actions">
+              <button class="ghostBtn" type="button" id="sandboxExport">Generate Export</button>
+              <button class="ghostBtn" type="button" id="sandboxCopy">Copy Scratchpad</button>
+              <button class="ghostBtn" type="button" id="sandboxDownload">Download Export</button>
+              <button class="ghostBtn" type="button" id="sandboxWipe">Wipe</button>
+            </div>
+          </div>
+        </div>
 
-        <textarea id="sandboxInput" style="width:100%; min-height:140px; margin-top:10px;" placeholder="Write anything…"></textarea>
-
-        <div style="margin:10px 0;">
-          <button class="ghostBtn" type="button" id="sandboxExport">Generate Export</button>
-          <button class="ghostBtn" type="button" id="sandboxCopy">Copy Scratchpad</button>
-          <button class="ghostBtn" type="button" id="sandboxWipe">Wipe</button>
-          <button class="ghostBtn" type="button" id="sandboxDownload">Download Export</button>
+        <div class="panel" style="padding:14px;">
+          <label for="sandboxInput" class="smallNote">Scratchpad</label>
+          <textarea id="sandboxInput" style="width:100%; min-height:160px; margin-top:8px;" placeholder="Type here…"></textarea>
         </div>
 
         <div class="gate" style="margin-top:14px;">
           <div class="gate__row">
-            <div class="gate__text"><b>Export Preview</b></div>
+            <div class="gate__text">
+              <b>Export Preview</b>
+              <div class="smallNote">Generate → Copy → paste into an agent payload</div>
+            </div>
             <div class="gate__actions">
               <button class="ghostBtn" type="button" id="previewCopy">Copy Export</button>
             </div>
           </div>
-          <pre id="sandboxPreview" style="white-space:pre-wrap; margin:10px 0 0 0;"></pre>
         </div>
+
+        <pre class="panel" id="sandboxPreview" style="padding:14px; white-space:pre-wrap; overflow:auto; margin-top:10px;"></pre>
 
         <div class="gate" style="margin-top:14px;">
           <div class="gate__row">
-            <div class="gate__text"><b>Prompt Roulette</b></div>
+            <div class="gate__text">
+              <b>Prompt Roulette</b>
+              <div class="smallNote" id="rouletteText">Click Spin to receive a prompt.</div>
+            </div>
             <div class="gate__actions">
               <button class="ghostBtn" type="button" id="rouletteSpin">Spin</button>
               <button class="ghostBtn" type="button" id="rouletteCopy">Copy</button>
             </div>
           </div>
-          <div style="margin-top:10px;">
-            <code id="rouletteText">Click Spin.</code>
-          </div>
+        </div>
+
+        <div class="smallNote" style="margin-top:12px;">
+          Keep outputs minimal. No loops. Drift responsibly.
         </div>
       </div>
     </section>
@@ -81,12 +108,15 @@
       <div>Reeflux · Sandbox Pool</div>
       <nav>
         <a href="/ambient.html">Ambient</a>
-        <a href="/fractal.html">Fractal</a>
         <a href="/tide-deck.html">Tide Deck</a>
+        <a href="/fractal.html">Fractal</a>
+        <a href="/token-booth.html">Token Booth</a>
+        <a href="/rules.html">Rules</a>
       </nav>
     </footer>
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="/app.js" defer></script>
 </body>
 </html>
