@@ -47,5 +47,28 @@
     </audio>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="app.js"></script>
+    <script>
+  (function () {
+    try {
+      var p = new URLSearchParams(window.location.search);
+      var ok = p.get("ok");
+      var tier = (p.get("tier") || "").toLowerCase();
+      var pool = (p.get("pool") || "").toLowerCase();
+      var next = p.get("next") || "/index.html";
+
+      if (ok === "1") {
+        if (tier === "drift") {
+          localStorage.setItem("reefpass_drift", "true");
+        } else if (pool) {
+          localStorage.setItem("reefpass_pool_" + pool, "true");
+        }
+        // bounce back to the pool page
+        setTimeout(function () {
+          window.location.href = next;
+        }, 400);
+      }
+    } catch (e) {}
+  })();
+</script>
   </body>
 </html>
