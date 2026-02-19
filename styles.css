@@ -903,3 +903,4 @@ body.fractal-focus .fractalStage{
 @media (prefers-reduced-motion: reduce){
   *{ animation: none !important; transition: none !important; }
 }
+html { outline: 6px solid red !important; }
