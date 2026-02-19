@@ -391,6 +391,17 @@ body{
   .centerTitle h1{ font-size: 40px; }
   .poolGrid{ grid-template-columns: 1fr; }
   .statsGrid{ grid-template-columns: 1fr; }
+  
+  .mobile-dock{
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  padding: 12px 12px calc(12px + var(--safe-bottom));
+  backdrop-filter: blur(12px);
+}
+.mobile-dock button{
+  min-height: 44px;
+  padding: 12px 14px;
+}
 }/* ---------- Pool Page Helpers ---------- */
 .poolShell{
   max-width: 980px;
