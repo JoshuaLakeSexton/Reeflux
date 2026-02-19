@@ -1,7 +1,10 @@
-/* styles.css (Reeflux.com)
-   Clean, mobile-safe, desktop-ready, iOS-safe-area + dvh fixes.
-   Drop-in replacement for your entire file.
-*/
+/* ==========================================================
+   Reeflux — FULL styles.css (Mobile + Desktop, iOS-safe)
+   - Centered mobile header
+   - Fixed background that still scrolls (iOS-safe layer)
+   - Accessible buttons + safe-area spacing
+   - Keeps your existing look (VT323/Inter, panels, tiles, etc.)
+   ========================================================== */
 
 /* =========================
    TOKENS / GLOBALS
@@ -29,13 +32,13 @@
   --safe-bottom: env(safe-area-inset-bottom);
   --safe-left: env(safe-area-inset-left);
 
-  /* page paddings (base) */
+  /* layout padding */
   --pad-x: 22px;
   --pad-top: 26px;
   --pad-bottom: 42px;
 
-  /* dock */
-  --dock-hint: 74px; /* space reserve for dock on mobile */
+  /* mobile bottom comfort so Safari UI doesn't cover buttons */
+  --mobile-bottom-buffer: 96px;
 }
 
 *{ box-sizing:border-box; }
@@ -51,6 +54,21 @@ body{
   min-height: 100vh;
   min-height: 100dvh;
 
+  /* Background is handled by fixed ::after for iOS safety */
+  background: none;
+
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* iOS-safe FIXED background layer (scrolls content over it) */
+body::after{
+  content:"";
+  position: fixed;
+  inset: 0;
+  z-index: -3;
+  pointer-events: none;
+
   background:
     linear-gradient(rgba(6,10,16,.20), rgba(6,10,16,.55)),
     url("/assets/reeflux_bg.png");
@@ -58,18 +76,10 @@ body{
   background-position: center;
   background-repeat: no-repeat;
 
-  /* iOS Safari can jitter with fixed attachment; only enable on larger screens */
-  background-attachment: scroll;
-
-  /* prevent iOS rubber-band glow */
-  overscroll-behavior-y: none;
+  transform: translateZ(0);
 }
 
-@media (min-width: 981px){
-  body{ background-attachment: fixed; }
-}
-
-/* subtle grain (fixed layer) */
+/* subtle grain layer (above bg, below content) */
 body::before{
   content:"";
   position:fixed;
@@ -78,7 +88,8 @@ body::before{
   opacity:.10;
   mix-blend-mode: soft-light;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E");
-  z-index: 0;
+  z-index: -2;
+  transform: translateZ(0);
 }
 
 a{
@@ -88,15 +99,13 @@ a{
 a:hover{ opacity:.92; }
 
 /* =========================
-   SAFE AREA + WRAPPERS
-   (IMPORTANT: do NOT pad body; fixed elements ignore it)
+   SAFE-AREA WRAPPERS
 ========================= */
 .container,
 .poolShell{
-  max-width: 1180px;
-  margin: 0 auto;
   position: relative;
   z-index: 1;
+  margin: 0 auto;
 
   padding-left:  calc(var(--pad-x) + var(--safe-left));
   padding-right: calc(var(--pad-x) + var(--safe-right));
@@ -104,18 +113,18 @@ a:hover{ opacity:.92; }
   padding-bottom: calc(var(--pad-bottom) + var(--safe-bottom));
 }
 
+.container{ max-width: 1180px; }
 .poolShell{ max-width: 980px; }
 
-/* On mobile, reserve space so bottom dock never covers content */
 @media (max-width: 980px){
   .container,
   .poolShell{
-    padding-bottom: calc(var(--pad-bottom) + var(--safe-bottom) + var(--dock-hint));
+    padding-bottom: calc(var(--pad-bottom) + var(--safe-bottom) + var(--mobile-bottom-buffer));
   }
 }
 
 /* =========================
-   TOP BAR / HEADER
+   TOP BAR (DESKTOP)
 ========================= */
 .topbar{
   display:flex;
@@ -177,9 +186,51 @@ a:hover{ opacity:.92; }
   background: rgba(0,0,0,.18);
   box-shadow: 0 12px 36px var(--shadow);
   cursor:pointer;
+  min-height: 44px; /* tap target */
 }
+
 .audioBtn:hover{ background: rgba(0,0,0,.26); }
 .audioBtn:active{ transform: translateY(1px); }
+
+/* =========================
+   MOBILE HEADER (CENTERED STACK)
+   (Fixes your screenshot)
+========================= */
+@media (max-width: 980px){
+  .topbar{
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 10px;
+  }
+
+  .brand{
+    justify-content: center;
+  }
+
+  .centerTitle{
+    width: 100%;
+    flex: unset;
+    text-align: center;
+    margin-top: 0;
+  }
+
+  .centerTitle h1{
+    font-size: 40px;
+    line-height: 1.0;
+  }
+
+  .centerTitle p{
+    font-size: 13px;
+  }
+
+  .audioBtn{
+    width: 100%;
+    max-width: 520px;
+    text-align: center;
+  }
+}
 
 /* =========================
    PANELS
@@ -213,6 +264,15 @@ a:hover{ opacity:.92; }
   padding-left: 18px;
 }
 
+.smallNote{
+  margin-top: 10px;
+  font-size: 12px;
+  color: rgba(230,227,216,.65);
+}
+
+/* =========================
+   LINKS / PILLS / BUTTONS (ACCESSIBLE)
+========================= */
 .pillRow{
   display:flex;
   gap: 12px;
@@ -223,18 +283,49 @@ a:hover{ opacity:.92; }
 .pillLink{
   font-family:"VT323", monospace;
   font-size: 20px;
-  padding: 10px 14px;
+  padding: 12px 16px;
   border-radius: 12px;
   border: 1px solid rgba(230,227,216,.22);
   background: rgba(0,0,0,.18);
   color: var(--sand);
+  min-height: 48px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
 }
+
 .pillLink:hover{ background: rgba(0,0,0,.26); }
 
-.smallNote{
-  margin-top: 10px;
-  font-size: 12px;
-  color: rgba(230,227,216,.65);
+.ghostBtn{
+  font-family:"VT323", monospace;
+  font-size: 20px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(230,227,216,.18);
+  background: rgba(0,0,0,.18);
+  color: rgba(230,227,216,.92);
+  cursor:pointer;
+  min-height: 48px;
+}
+.ghostBtn:hover{ background: rgba(0,0,0,.26); }
+.ghostBtn:active{ transform: translateY(1px); }
+.ghostBtn.danger{ border-color: rgba(255,160,160,.35); }
+
+@media (max-width: 980px){
+  /* Make CTAs easy to tap and not cramped */
+  .pillLink,
+  .ghostBtn{
+    width: 100%;
+    max-width: 520px;
+    text-align:center;
+  }
+
+  .pillRow,
+  .gate__actions,
+  .poolControls,
+  .footer nav{
+    gap: 12px;
+  }
 }
 
 /* =========================
@@ -275,6 +366,10 @@ a:hover{ opacity:.92; }
   color: rgba(230,227,216,.62);
 }
 
+@media (max-width: 980px){
+  .statsGrid{ grid-template-columns: 1fr; }
+}
+
 /* =========================
    POOL TILE GRID (HOME)
 ========================= */
@@ -296,7 +391,6 @@ a:hover{ opacity:.92; }
   cursor:pointer;
 }
 
-/* inner frame */
 .poolTile::before{
   content:"";
   position:absolute;
@@ -307,7 +401,6 @@ a:hover{ opacity:.92; }
   pointer-events:none;
 }
 
-/* pixel grid + flowing gradient layer */
 .poolTile::after{
   content:"";
   position:absolute;
@@ -387,6 +480,10 @@ a:hover{ opacity:.92; }
 }
 .poolTile--closed:hover{ transform:none; }
 
+@media (max-width: 980px){
+  .poolGrid{ grid-template-columns: 1fr; }
+}
+
 /* =========================
    FOOTER
 ========================= */
@@ -414,7 +511,7 @@ a:hover{ opacity:.92; }
 }
 
 /* =========================
-   TOAST (safe-area aware)
+   TOAST (SAFE AREA)
 ========================= */
 .toast{
   position: fixed;
@@ -473,13 +570,15 @@ a:hover{ opacity:.92; }
 .backLink{
   font-family:"VT323", monospace;
   font-size: 20px;
-  padding: 10px 14px;
+  padding: 12px 16px;
   border-radius: 12px;
   border: 1px solid rgba(230,227,216,.18);
   background: rgba(0,0,0,.14);
   display:inline-flex;
   align-items:center;
+  justify-content:center;
   gap: 8px;
+  min-height: 48px;
 }
 .backLink:hover{ background: rgba(0,0,0,.24); }
 
@@ -527,21 +626,6 @@ a:hover{ opacity:.92; }
   flex-wrap:wrap;
 }
 
-/* buttons */
-.ghostBtn{
-  font-family:"VT323", monospace;
-  font-size: 20px;
-  padding: 10px 14px;
-  border-radius: 12px;
-  border: 1px solid rgba(230,227,216,.18);
-  background: rgba(0,0,0,.18);
-  color: rgba(230,227,216,.92);
-  cursor:pointer;
-}
-.ghostBtn:hover{ background: rgba(0,0,0,.26); }
-.ghostBtn:active{ transform: translateY(1px); }
-.ghostBtn.danger{ border-color: rgba(255,160,160,.35); }
-
 /* =========================
    AMBIENT VISUALS
 ========================= */
@@ -565,7 +649,7 @@ a:hover{ opacity:.92; }
   100%{ background-position: 0% 50%; }
 }
 
-/* soft breathing/pulse overlay */
+/* breathing overlay */
 .ambientGradient::before{
   content:"";
   position:absolute;
@@ -624,6 +708,10 @@ a:hover{ opacity:.92; }
   width: 180px;
 }
 
+@media (max-width: 980px){
+  .slider input[type="range"]{ width: 160px; }
+}
+
 /* =========================
    FRACTAL CANVAS
 ========================= */
@@ -641,7 +729,11 @@ a:hover{ opacity:.92; }
   display:block;
 }
 
-/* Focus Mode (dvh-safe) */
+@media (max-width: 980px){
+  .fractalWrap{ height: 320px; }
+}
+
+/* Focus mode (dvh-safe) */
 body.fractal-focus .siteHeader,
 body.fractal-focus .footer,
 body.fractal-focus #fractalControls,
@@ -693,6 +785,10 @@ body.fractal-focus .toast{
   grid-template-columns: 1.3fr 1fr;
   gap: 14px;
   margin-top: 12px;
+}
+
+@media (max-width: 980px){
+  .sandboxTop{ grid-template-columns: 1fr; }
 }
 
 .sandboxCard{
@@ -757,7 +853,7 @@ body.fractal-focus .toast{
   line-height: 1.45;
 }
 
-/* Legacy sandbox box support (if old markup still exists) */
+/* Legacy sandbox support */
 .sandboxBox{
   border-radius: 16px;
   border: 1px solid rgba(230,227,216,.14);
@@ -779,235 +875,8 @@ body.fractal-focus .toast{
 }
 
 /* =========================
-   FRACTAL POOL (Dock / Stage)
-========================= */
-.poolPurpose{
-  margin-top: 6px;
-  padding: 8px 2px 0;
-}
-
-.fractalDock{
-  margin-top: 14px;
-  border-radius: 16px;
-  border: 1px solid rgba(230,227,216,.16);
-  background: rgba(0,0,0,.14);
-  padding: 14px;
-}
-
-.fractalDock__row{
-  display:flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  align-items:flex-end;
-  justify-content: space-between;
-}
-
-.fractalDock__group{
-  display:flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 220px;
-}
-
-.fractalDock__btnRow{
-  min-width: unset;
-  flex-direction: row;
-  align-items: center;
-  gap: 10px;
-}
-
-.fractalDock__label{
-  font-size: 12px;
-  opacity: .78;
-}
-
-.frSelect{
-  font-family:"VT323", monospace;
-  font-size: 20px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(230,227,216,.18);
-  background: rgba(0,0,0,.18);
-  color: rgba(230,227,216,.92);
-  outline: none;
-}
-.frSelect:focus{
-  box-shadow: 0 0 0 3px rgba(120,220,255,.12);
-}
-
-.fractalDock__grid{
-  margin-top: 12px;
-  display:grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.frField{
-  border-radius: 14px;
-  border: 1px solid rgba(230,227,216,.14);
-  background: rgba(0,0,0,.14);
-  padding: 10px 12px;
-  display:grid;
-  gap: 8px;
-}
-.frField label{
-  font-size: 12px;
-  opacity: .78;
-}
-.frField input[type="range"]{ width: 100%; }
-
-.frValue{
-  font-family:"VT323", monospace;
-  font-size: 18px;
-  opacity: .9;
-}
-
-.fractalDock__hint{
-  margin-top: 10px;
-  font-size: 12px;
-  opacity: .72;
-}
-
-.fractalStage{
-  margin-top: 14px;
-  position: relative;
-  border-radius: 16px;
-  overflow:hidden;
-  border: 1px solid rgba(230,227,216,.14);
-  background: rgba(0,0,0,.18);
-  height: 520px;
-}
-
-.fractalStage__badge{
-  position:absolute;
-  left: 12px;
-  top: 12px;
-  z-index: 3;
-  font-family:"VT323", monospace;
-  font-size: 18px;
-  padding: 8px 10px;
-  border-radius: 12px;
-  border: 1px solid rgba(230,227,216,.16);
-  background: rgba(0,0,0,.20);
-  color: rgba(230,227,216,.92);
-  pointer-events:none;
-}
-
-/* If focus mode uses stage instead of wrap */
-body.fractal-focus .fractalStage{
-  height: calc(100dvh - 36px);
-  margin-top: 0;
-  border-radius: 16px;
-}
-
-/* =========================
-   MOBILE DOCK (optional)
-   Add matching HTML:
-   <nav class="mobile-dock">...</nav>
-========================= */
-.mobile-dock{
-  display:none; /* hidden by default, enabled on mobile */
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-
-  z-index: 9998;
-  padding:
-    12px
-    calc(12px + var(--safe-right))
-    calc(12px + var(--safe-bottom))
-    calc(12px + var(--safe-left));
-
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-top: 1px solid rgba(230,227,216,.12);
-  background: rgba(0,0,0,.22);
-}
-
-.mobile-dock button{
-  min-height: 44px;
-  padding: 12px 14px;
-  border-radius: 12px;
-  border: 1px solid rgba(230,227,216,.18);
-  background: rgba(0,0,0,.18);
-  color: rgba(230,227,216,.92);
-  font-family:"VT323", monospace;
-  font-size: 20px;
-  cursor:pointer;
-}
-.mobile-dock button:hover{ background: rgba(0,0,0,.26); }
-
-/* =========================
-   RESPONSIVE
-========================= */
-@media (max-width: 980px){
-  .centerTitle h1{ font-size: 40px; }
-
-  .topbar{
-    align-items:flex-start;
-  }
-
-  .statsGrid{ grid-template-columns: 1fr; }
-
-  .poolGrid{ grid-template-columns: 1fr; }
-
-  .sandboxTop{ grid-template-columns: 1fr; }
-
-  .fractalDock__grid{ grid-template-columns: 1fr; }
-
-  .fractalStage{ height: 420px; }
-
-  .mobile-dock{
-    display:flex;
-    gap: 10px;
-    justify-content: space-between;
-  }
-
-  /* Make sliders fit better on small screens */
-  .slider input[type="range"]{ width: 160px; }
-}
-
-/* =========================
-   ACCESSIBILITY / MOTION
+   REDUCED MOTION
 ========================= */
 @media (prefers-reduced-motion: reduce){
   *{ animation: none !important; transition: none !important; }
-}
-/* =========================
-   MOBILE HEADER FIX
-========================= */
-@media (max-width: 980px){
-  .topbar{
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    margin-bottom: 14px;
-  }
-
-  /* Put brand in the center too */
-  .brand{
-    justify-content: center;
-  }
-
-  /* True centered title */
-  .centerTitle{
-    flex: unset;
-    width: 100%;
-    text-align: center;
-    margin-top: 0;
-  }
-
-  .centerTitle h1{
-    font-size: 40px; /* keep your size */
-    line-height: 1.0;
-  }
-
-  /* Make the audio button full-width + reachable */
-  .audioBtn{
-    width: 100%;
-    max-width: 420px;
-    text-align: center;
-  }
 }
