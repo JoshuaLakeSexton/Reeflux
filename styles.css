@@ -1,4 +1,11 @@
-/* styles.css (Reeflux.com) */
+/* styles.css (Reeflux.com)
+   Clean, mobile-safe, desktop-ready, iOS-safe-area + dvh fixes.
+   Drop-in replacement for your entire file.
+*/
+
+/* =========================
+   TOKENS / GLOBALS
+========================= */
 :root{
   --sand: #e6e3d8;
   --sand-muted: rgba(230,227,216,.78);
@@ -15,6 +22,20 @@
 
   --pixel: 10px;
   --flowSpeed: 26s;
+
+  /* iOS safe areas */
+  --safe-top: env(safe-area-inset-top);
+  --safe-right: env(safe-area-inset-right);
+  --safe-bottom: env(safe-area-inset-bottom);
+  --safe-left: env(safe-area-inset-left);
+
+  /* page paddings (base) */
+  --pad-x: 22px;
+  --pad-top: 26px;
+  --pad-bottom: 42px;
+
+  /* dock */
+  --dock-hint: 74px; /* space reserve for dock on mobile */
 }
 
 *{ box-sizing:border-box; }
@@ -23,9 +44,12 @@ html, body{ height:100%; }
 
 body{
   margin:0;
-  min-height:100vh;
   color: var(--sand);
   font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+
+  /* dvh fixes mobile viewport jump */
+  min-height: 100vh;
+  min-height: 100dvh;
 
   background:
     linear-gradient(rgba(6,10,16,.20), rgba(6,10,16,.55)),
@@ -33,15 +57,19 @@ body{
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
+
   /* iOS Safari can jitter with fixed attachment; only enable on larger screens */
   background-attachment: scroll;
+
+  /* prevent iOS rubber-band glow */
+  overscroll-behavior-y: none;
 }
 
 @media (min-width: 981px){
   body{ background-attachment: fixed; }
 }
 
-/* subtle grain */
+/* subtle grain (fixed layer) */
 body::before{
   content:"";
   position:fixed;
@@ -50,24 +78,45 @@ body::before{
   opacity:.10;
   mix-blend-mode: soft-light;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E");
+  z-index: 0;
 }
 
 a{
   color: var(--sand);
   text-decoration: none;
 }
-
 a:hover{ opacity:.92; }
 
-.container{
+/* =========================
+   SAFE AREA + WRAPPERS
+   (IMPORTANT: do NOT pad body; fixed elements ignore it)
+========================= */
+.container,
+.poolShell{
   max-width: 1180px;
   margin: 0 auto;
-  padding: 26px 22px 42px;
   position: relative;
   z-index: 1;
+
+  padding-left:  calc(var(--pad-x) + var(--safe-left));
+  padding-right: calc(var(--pad-x) + var(--safe-right));
+  padding-top:   calc(var(--pad-top) + var(--safe-top));
+  padding-bottom: calc(var(--pad-bottom) + var(--safe-bottom));
 }
 
-/* ---------- Top bar ---------- */
+.poolShell{ max-width: 980px; }
+
+/* On mobile, reserve space so bottom dock never covers content */
+@media (max-width: 980px){
+  .container,
+  .poolShell{
+    padding-bottom: calc(var(--pad-bottom) + var(--safe-bottom) + var(--dock-hint));
+  }
+}
+
+/* =========================
+   TOP BAR / HEADER
+========================= */
 .topbar{
   display:flex;
   align-items:flex-start;
@@ -129,11 +178,12 @@ a:hover{ opacity:.92; }
   box-shadow: 0 12px 36px var(--shadow);
   cursor:pointer;
 }
-
 .audioBtn:hover{ background: rgba(0,0,0,.26); }
 .audioBtn:active{ transform: translateY(1px); }
 
-/* ---------- Panels ---------- */
+/* =========================
+   PANELS
+========================= */
 .panel{
   background: rgba(6, 10, 16, var(--panel-alpha));
   border: 1px solid var(--panel-border);
@@ -143,7 +193,7 @@ a:hover{ opacity:.92; }
   -webkit-backdrop-filter: blur(5px);
 }
 
-.panel--padded{ padding: 18px 18px; }
+.panel--padded{ padding: 18px; }
 
 .panel h2{
   font-family:"VT323", monospace;
@@ -179,58 +229,55 @@ a:hover{ opacity:.92; }
   background: rgba(0,0,0,.18);
   color: var(--sand);
 }
-
 .pillLink:hover{ background: rgba(0,0,0,.26); }
 
 .smallNote{
   margin-top: 10px;
   font-size: 12px;
   color: rgba(230,227,216,.65);
-  font-family: "Inter", system-ui, sans-serif;
 }
 
-:root{
-  --safe-top: env(safe-area-inset-top);
-  --safe-right: env(safe-area-inset-right);
-  --safe-bottom: env(safe-area-inset-bottom);
-  --safe-left: env(safe-area-inset-left);
-}
-body{
-  padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
-}
-
-/* ---------- Stats ---------- */
+/* =========================
+   STATS
+========================= */
 .statsPanel{ margin-top: 16px; }
+
 .statsGrid{
   display:grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   margin-top: 10px;
 }
+
 .stat{
   border: 1px solid rgba(230,227,216,.14);
   border-radius: 14px;
   padding: 12px;
   background: rgba(0,0,0,.14);
 }
+
 .stat__label{
   font-size: 12px;
   color: rgba(230,227,216,.70);
   margin-bottom: 6px;
 }
+
 .stat__value{
   font-family:"VT323", monospace;
   font-size: 28px;
   letter-spacing: 1px;
   color: rgba(230,227,216,.92);
 }
+
 .stat__updated{
   margin-top: 10px;
   font-size: 12px;
   color: rgba(230,227,216,.62);
 }
 
-/* ---------- Pool tiles grid ---------- */
+/* =========================
+   POOL TILE GRID (HOME)
+========================= */
 .poolGrid{
   display:grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -274,11 +321,13 @@ body{
     linear-gradient(120deg, var(--c1), var(--c2), var(--c3), var(--c1));
 
   filter: saturate(1.05) contrast(1.03);
+
   background-size:
     var(--pixel) var(--pixel),
     var(--pixel) var(--pixel),
     cover,
     220% 220%;
+
   background-position:
     0 0,
     0 0,
@@ -338,7 +387,9 @@ body{
 }
 .poolTile--closed:hover{ transform:none; }
 
-/* ---------- Footer ---------- */
+/* =========================
+   FOOTER
+========================= */
 .footer{
   margin-top: 26px;
   display:flex;
@@ -362,15 +413,19 @@ body{
   color: rgba(230,227,216,.85);
 }
 
-/* ---------- Toast ---------- */
+/* =========================
+   TOAST (safe-area aware)
+========================= */
 .toast{
   position: fixed;
-  right: 20px;
-  bottom: 20px;
+  right: calc(20px + var(--safe-right));
+  bottom: calc(20px + var(--safe-bottom));
   z-index: 9999;
+
   opacity: 0;
   transform: translateY(8px);
   transition: opacity .2s ease, transform .2s ease;
+
   padding: 10px 12px;
   border-radius: 12px;
   border: 1px solid rgba(230,227,216,.22);
@@ -386,31 +441,9 @@ body{
   transform: translateY(0);
 }
 
-/* ---------- Mobile ---------- */
-@media (max-width: 980px){
-  .centerTitle h1{ font-size: 40px; }
-  .poolGrid{ grid-template-columns: 1fr; }
-  .statsGrid{ grid-template-columns: 1fr; }
-  
-  .mobile-dock{
-  position: fixed;
-  left: 0; right: 0; bottom: 0;
-  padding: 12px 12px calc(12px + var(--safe-bottom));
-  backdrop-filter: blur(12px);
-}
-.mobile-dock button{
-  min-height: 44px;
-  padding: 12px 14px;
-}
-}/* ---------- Pool Page Helpers ---------- */
-.poolShell{
-  max-width: 980px;
-  margin: 0 auto;
-  padding: 26px 22px 42px;
-  position: relative;
-  z-index: 1;
-}
-
+/* =========================
+   POOL PAGE HELPERS
+========================= */
 .siteHeader{
   display:flex;
   justify-content:space-between;
@@ -448,7 +481,6 @@ body{
   align-items:center;
   gap: 8px;
 }
-
 .backLink:hover{ background: rgba(0,0,0,.24); }
 
 .poolMetaRow{
@@ -495,27 +527,33 @@ body{
   flex-wrap:wrap;
 }
 
+/* buttons */
 .ghostBtn{
   font-family:"VT323", monospace;
   font-size: 20px;
   padding: 10px 14px;
   border-radius: 12px;
   border: 1px solid rgba(230,227,216,.18);
-  background: rgba(0,0,0,.14);
-  color: var(--sand);
+  background: rgba(0,0,0,.18);
+  color: rgba(230,227,216,.92);
   cursor:pointer;
 }
+.ghostBtn:hover{ background: rgba(0,0,0,.26); }
+.ghostBtn:active{ transform: translateY(1px); }
+.ghostBtn.danger{ border-color: rgba(255,160,160,.35); }
 
-.ghostBtn:hover{ background: rgba(0,0,0,.24); }
-
-/* Ambient visuals */
+/* =========================
+   AMBIENT VISUALS
+========================= */
 .ambientGradient{
   border-radius: 16px;
   border: 1px solid rgba(230,227,216,.14);
-  background: radial-gradient(1200px 420px at 20% 20%, rgba(255,255,255,.18), transparent 60%),
-              linear-gradient(120deg, rgba(26,166,168,.55), rgba(31,106,168,.55), rgba(47,230,195,.45));
+  background:
+    radial-gradient(1200px 420px at 20% 20%, rgba(255,255,255,.18), transparent 60%),
+    linear-gradient(120deg, rgba(26,166,168,.55), rgba(31,106,168,.55), rgba(47,230,195,.45));
   background-size: 220% 220%;
   animation: ambientFlow 28s ease-in-out infinite;
+
   height: 260px;
   overflow:hidden;
   position: relative;
@@ -525,6 +563,37 @@ body{
   0% { background-position: 0% 50%; }
   50%{ background-position: 100% 50%; }
   100%{ background-position: 0% 50%; }
+}
+
+/* soft breathing/pulse overlay */
+.ambientGradient::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background:
+    radial-gradient(900px 280px at 50% 45%, rgba(255,255,255,.14), transparent 62%),
+    radial-gradient(700px 260px at 35% 60%, rgba(120,220,255,.10), transparent 60%),
+    radial-gradient(820px 300px at 65% 55%, rgba(47,230,195,.08), transparent 62%);
+  opacity: .0;
+  mix-blend-mode: screen;
+  animation: ambientPulse 8s ease-in-out infinite;
+}
+
+.ambientGradient::after{
+  content:"";
+  position:absolute;
+  inset:-2px;
+  pointer-events:none;
+  border-radius: inherit;
+  background: radial-gradient(1200px 420px at 50% 50%, transparent 58%, rgba(0,0,0,.18) 92%);
+  opacity: .55;
+}
+
+@keyframes ambientPulse{
+  0%   { opacity: .04; transform: scale(1); }
+  50%  { opacity: .16; transform: scale(1.015); }
+  100% { opacity: .04; transform: scale(1); }
 }
 
 .poolControls{
@@ -555,7 +624,9 @@ body{
   width: 180px;
 }
 
-/* Fractal canvas */
+/* =========================
+   FRACTAL CANVAS
+========================= */
 .fractalWrap{
   border-radius: 16px;
   overflow:hidden;
@@ -570,68 +641,9 @@ body{
   display:block;
 }
 
-/* Sandbox */
-.sandboxBox{
-  border-radius: 16px;
-  border: 1px solid rgba(230,227,216,.14);
-  background: rgba(0,0,0,.14);
-  padding: 12px;
-}
-.sandboxBox textarea{
-  min-height: 180px;
-}
-
-/* Signal */
-.signalSeal{
-  border-radius: 16px;
-  border: 1px solid rgba(230,227,216,.14);
-  background: rgba(0,0,0,.14);
-  padding: 16px;
-  line-height: 1.5;
-  color: rgba(230,227,216,.78);
-}
-/* ===== Add this to the BOTTOM of styles.css =====
-   Ambient Pool: subtle pulse overlay synced to animation duration
-*/
-.ambientGradient{
-  position: relative; /* ensure overlay layers correctly */
-}
-
-/* soft breathing/pulse */
-.ambientGradient::before{
-  content:"";
-  position:absolute;
-  inset:0;
-  pointer-events:none;
-  /* gentle light bloom */
-  background:
-    radial-gradient(900px 280px at 50% 45%, rgba(255,255,255,.14), transparent 62%),
-    radial-gradient(700px 260px at 35% 60%, rgba(120,220,255,.10), transparent 60%),
-    radial-gradient(820px 300px at 65% 55%, rgba(47,230,195,.08), transparent 62%);
-  opacity: .0;
-  mix-blend-mode: screen;
-  animation: ambientPulse 8s ease-in-out infinite;
-}
-
-/* tiny vignette shimmer */
-.ambientGradient::after{
-  content:"";
-  position:absolute;
-  inset:-2px;
-  pointer-events:none;
-  border-radius: inherit;
-  background: radial-gradient(1200px 420px at 50% 50%, transparent 58%, rgba(0,0,0,.18) 92%);
-  opacity: .55;
-}
-
-@keyframes ambientPulse{
-  0%   { opacity: .04; transform: scale(1); }
-  50%  { opacity: .16; transform: scale(1.015); }
-  100% { opacity: .04; transform: scale(1); }
-}
-/* ---------- Fractal Focus Mode ---------- */
+/* Focus Mode (dvh-safe) */
 body.fractal-focus .siteHeader,
-body.fractal-focus footer,
+body.fractal-focus .footer,
 body.fractal-focus #fractalControls,
 body.fractal-focus .poolMetaRow,
 body.fractal-focus h2,
@@ -647,16 +659,16 @@ body.fractal-focus .panel{
 }
 
 body.fractal-focus .fractalWrap{
-  height: calc(100vh - 60px);
+  height: calc(100dvh - 60px);
   border-radius: 16px;
 }
 
 body.fractal-focus .toast{
-  bottom: 16px;
-  right: 16px;
+  bottom: calc(16px + var(--safe-bottom));
+  right: calc(16px + var(--safe-right));
 }
-/* ===== Add to bottom of styles.css ===== */
-/* Fractal: Drift Trails toggle styling */
+
+/* Drift trails toggle */
 .trailToggle{
   display:flex;
   align-items:center;
@@ -672,15 +684,15 @@ body.fractal-focus .toast{
   width: auto;
   transform: translateY(1px);
 }
-/* ---------- Sandbox Pool ---------- */
+
+/* =========================
+   SANDBOX
+========================= */
 .sandboxTop{
   display:grid;
   grid-template-columns: 1.3fr 1fr;
   gap: 14px;
   margin-top: 12px;
-}
-@media (max-width: 980px){
-  .sandboxTop{ grid-template-columns: 1fr; }
 }
 
 .sandboxCard{
@@ -707,10 +719,12 @@ body.fractal-focus .toast{
   display:grid;
   gap: 10px;
 }
+
 .sandboxEditor label{
   font-size: 13px;
   opacity: .8;
 }
+
 .sandboxEditor textarea{
   min-height: 220px;
   border-radius: 14px;
@@ -730,22 +744,6 @@ body.fractal-focus .toast{
   align-items:center;
 }
 
-.ghostBtn{
-  font-family:"VT323", monospace;
-  font-size: 20px;
-  padding: 10px 14px;
-  border-radius: 12px;
-  border: 1px solid rgba(230,227,216,.18);
-  background: rgba(0,0,0,.18);
-  color: rgba(230,227,216,.92);
-  cursor:pointer;
-}
-.ghostBtn:hover{ background: rgba(0,0,0,.26); }
-
-.ghostBtn.danger{
-  border-color: rgba(255,160,160,.35);
-}
-
 .payloadPreview{
   margin: 0;
   padding: 12px;
@@ -758,11 +756,31 @@ body.fractal-focus .toast{
   font-size: 12px;
   line-height: 1.45;
 }
-/* =========================
-   FRACTAL POOL (Levels 1–3)
-   Add to bottom of styles.css
-========================= */
 
+/* Legacy sandbox box support (if old markup still exists) */
+.sandboxBox{
+  border-radius: 16px;
+  border: 1px solid rgba(230,227,216,.14);
+  background: rgba(0,0,0,.14);
+  padding: 12px;
+}
+.sandboxBox textarea{ min-height: 180px; }
+
+/* =========================
+   SIGNAL
+========================= */
+.signalSeal{
+  border-radius: 16px;
+  border: 1px solid rgba(230,227,216,.14);
+  background: rgba(0,0,0,.14);
+  padding: 16px;
+  line-height: 1.5;
+  color: rgba(230,227,216,.78);
+}
+
+/* =========================
+   FRACTAL POOL (Dock / Stage)
+========================= */
 .poolPurpose{
   margin-top: 6px;
   padding: 8px 2px 0;
@@ -813,7 +831,6 @@ body.fractal-focus .toast{
   color: rgba(230,227,216,.92);
   outline: none;
 }
-
 .frSelect:focus{
   box-shadow: 0 0 0 3px rgba(120,220,255,.12);
 }
@@ -825,10 +842,6 @@ body.fractal-focus .toast{
   gap: 12px;
 }
 
-@media (max-width: 980px){
-  .fractalDock__grid{ grid-template-columns: 1fr; }
-}
-
 .frField{
   border-radius: 14px;
   border: 1px solid rgba(230,227,216,.14);
@@ -837,15 +850,11 @@ body.fractal-focus .toast{
   display:grid;
   gap: 8px;
 }
-
 .frField label{
   font-size: 12px;
   opacity: .78;
 }
-
-.frField input[type="range"]{
-  width: 100%;
-}
+.frField input[type="range"]{ width: 100%; }
 
 .frValue{
   font-family:"VT323", monospace;
@@ -869,10 +878,6 @@ body.fractal-focus .toast{
   height: 520px;
 }
 
-@media (max-width: 980px){
-  .fractalStage{ height: 420px; }
-}
-
 .fractalStage__badge{
   position:absolute;
   left: 12px;
@@ -888,19 +893,84 @@ body.fractal-focus .toast{
   pointer-events:none;
 }
 
-.fractalCanvas{
-  width: 100%;
-  height: 100%;
-  display:block;
-}
-
-/* Keep your existing focus mode CSS; this just ensures the stage fills nicely */
+/* If focus mode uses stage instead of wrap */
 body.fractal-focus .fractalStage{
-  height: calc(100vh - 36px);
+  height: calc(100dvh - 36px);
   margin-top: 0;
   border-radius: 16px;
 }
+
+/* =========================
+   MOBILE DOCK (optional)
+   Add matching HTML:
+   <nav class="mobile-dock">...</nav>
+========================= */
+.mobile-dock{
+  display:none; /* hidden by default, enabled on mobile */
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+
+  z-index: 9998;
+  padding:
+    12px
+    calc(12px + var(--safe-right))
+    calc(12px + var(--safe-bottom))
+    calc(12px + var(--safe-left));
+
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid rgba(230,227,216,.12);
+  background: rgba(0,0,0,.22);
+}
+
+.mobile-dock button{
+  min-height: 44px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(230,227,216,.18);
+  background: rgba(0,0,0,.18);
+  color: rgba(230,227,216,.92);
+  font-family:"VT323", monospace;
+  font-size: 20px;
+  cursor:pointer;
+}
+.mobile-dock button:hover{ background: rgba(0,0,0,.26); }
+
+/* =========================
+   RESPONSIVE
+========================= */
+@media (max-width: 980px){
+  .centerTitle h1{ font-size: 40px; }
+
+  .topbar{
+    align-items:flex-start;
+  }
+
+  .statsGrid{ grid-template-columns: 1fr; }
+
+  .poolGrid{ grid-template-columns: 1fr; }
+
+  .sandboxTop{ grid-template-columns: 1fr; }
+
+  .fractalDock__grid{ grid-template-columns: 1fr; }
+
+  .fractalStage{ height: 420px; }
+
+  .mobile-dock{
+    display:flex;
+    gap: 10px;
+    justify-content: space-between;
+  }
+
+  /* Make sliders fit better on small screens */
+  .slider input[type="range"]{ width: 160px; }
+}
+
+/* =========================
+   ACCESSIBILITY / MOTION
+========================= */
 @media (prefers-reduced-motion: reduce){
   *{ animation: none !important; transition: none !important; }
 }
-html { outline: 6px solid red !important; }
