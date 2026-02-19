@@ -189,6 +189,16 @@ a:hover{ opacity:.92; }
   font-family: "Inter", system-ui, sans-serif;
 }
 
+:root{
+  --safe-top: env(safe-area-inset-top);
+  --safe-right: env(safe-area-inset-right);
+  --safe-bottom: env(safe-area-inset-bottom);
+  --safe-left: env(safe-area-inset-left);
+}
+body{
+  padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
+}
+
 /* ---------- Stats ---------- */
 .statsPanel{ margin-top: 16px; }
 .statsGrid{
