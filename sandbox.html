@@ -45,11 +45,11 @@
       <div class="gate" data-pool-gate>
         <div class="gate__row">
           <div class="gate__text">
-            Pool sealed. Purchase access, return via Success, then refresh.
+            Pool sealed. Purchase access, return via /success, then refresh.
           </div>
           <div class="gate__actions">
-            <a class="pillLink" data-stripe="driftpass" href="#">Get Drift Pass</a>
-            <a class="pillLink" data-stripe="poolentry" href="#">Single Pool ($0.50)</a>
+            <a class="pillLink" data-stripe="driftpass" href="#">Get Drift Pass (<span data-price="drift-pass-monthly">$5/mo</span>)</a>
+            <a class="pillLink" data-stripe="poolentry" href="#">Single Pool (<span data-price="pool-entry-single">$0.50</span>)</a>
             <button class="ghostBtn" type="button" id="refreshAccess">Refresh Access</button>
           </div>
         </div>
@@ -63,10 +63,6 @@
             <div class="sandboxCard__text" id="rouletteText">
               Click “Spin” to receive a safe self-play prompt.
             </div>
-            <div class="pillRow" style="margin-top:10px;">
-              <button class="ghostBtn" type="button" id="rouletteSpin">Spin</button>
-              <button class="ghostBtn" type="button" id="rouletteCopy">Copy Prompt</button>
-            </div>
           </div>
 
           <div class="sandboxCard">
@@ -74,7 +70,7 @@
             <div class="sandboxCard__text">
               Autosaves while this tab is open. Clears when the session ends.
               <div style="margin-top:8px;">
-                <span class="tag" id="sessionAge">session age: --</span>
+                <span class="tag" id="sessionAge">session age: initializing</span>
               </div>
             </div>
           </div>
@@ -84,11 +80,31 @@
           <label for="sandboxInput">Sandbox Scratchpad</label>
           <textarea id="sandboxInput" placeholder="Type here. This is temporary."></textarea>
 
-          <div class="sandboxActions">
-            <button class="ghostBtn" type="button" id="sandboxExport">Export Payload</button>
-            <button class="ghostBtn" type="button" id="sandboxCopy">Copy</button>
-            <button class="ghostBtn" type="button" id="sandboxDownload">Download .txt</button>
-            <button class="ghostBtn danger" type="button" id="sandboxWipe">Wipe</button>
+          <div class="sandboxControlGrid" aria-label="Sandbox controls">
+            <section class="sandboxControlGroup" aria-labelledby="sandboxGenerateHeading">
+              <h3 id="sandboxGenerateHeading">Generate</h3>
+              <div class="sandboxActions">
+                <button class="ghostBtn" type="button" id="rouletteSpin">Prompt Roulette</button>
+                <button class="ghostBtn" type="button" id="rouletteCopy">Copy Prompt</button>
+              </div>
+            </section>
+
+            <section class="sandboxControlGroup" aria-labelledby="sandboxExportHeading">
+              <h3 id="sandboxExportHeading">Export</h3>
+              <div class="sandboxActions">
+                <button class="ghostBtn" type="button" id="sandboxExport">Generate Export</button>
+                <button class="ghostBtn" type="button" id="previewCopy">Copy Export</button>
+                <button class="ghostBtn" type="button" id="sandboxDownload">Download .txt</button>
+              </div>
+            </section>
+
+            <section class="sandboxControlGroup" aria-labelledby="sandboxScratchpadHeading">
+              <h3 id="sandboxScratchpadHeading">Scratchpad</h3>
+              <div class="sandboxActions">
+                <button class="ghostBtn" type="button" id="sandboxCopy">Copy Scratchpad</button>
+                <button class="ghostBtn danger" type="button" id="sandboxWipe">Clear Scratchpad</button>
+              </div>
+            </section>
           </div>
         </div>
 
@@ -101,9 +117,6 @@
 intent=...
 payload=...</pre>
               </div>
-            </div>
-            <div class="gate__actions">
-              <button class="ghostBtn" type="button" id="previewCopy">Copy Export</button>
             </div>
           </div>
         </div>
