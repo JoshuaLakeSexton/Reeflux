@@ -1,75 +1,76 @@
-// netlify/functions/checkout.js
 const Stripe = require("stripe");
 
-// IMPORTANT: trim to remove hidden whitespace/newlines
-const STRIPE_KEY = String(process.env.STRIPE_SECRET_KEY || "").trim();
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: "2023-10-16",
+});
 
-// Accept standard AND restricted keys
-if (!STRIPE_KEY || !(STRIPE_KEY.startsWith("sk_") || STRIPE_KEY.startsWith("rk_"))) {
-  throw new Error(
-    `Bad STRIPE_SECRET_KEY. Expected sk_... or rk_... Got: ${STRIPE_KEY.slice(0, 4)}...`
-  );
-}
+const PRICING = Object.freeze({
+  driftpass: {
+    amount: 500,
+    name: "Reeflux Drift Pass",
+    description: "Unlock Reeflux pool access on this device.",
+  },
+  poolentry: {
+    amount: 50,
+    name: "Reeflux Pool Entry",
+    description: "Unlock one Reeflux pool session.",
+  },
+});
 
-const stripe = new Stripe(STRIPE_KEY, { apiVersion: "2023-10-16" });
-
-// IMPORTANT: read the env var names you actually have in Netlify
-const PRICE_DRIFT =
-  process.env.PRICE_DRIFT_PASS ||
-  process.env.PRICE_DRIFT ||
-  "price_1Sw8AYPSnae9DdPY6fG3zhH7";
-
-const PRICE_SINGLE =
-  process.env.PRICE_SINGLE_POOL ||
-  process.env.PRICE_SINGLE ||
-  "price_1Sw88QPSnae9DdPYz2kKFsFF";
-
-function cleanSiteUrl(url) {
-  return String(url || "https://reeflux.com").replace(/\/+$/, "");
-}
-
-exports.handler = async (event) => {
-  if (event.httpMethod !== "POST") {
-    return { statusCode: 405, body: "Method Not Allowed" };
+function parseBody(event) {
+  if (event.httpMethod === "GET") {
+    return event.queryStringParameters || {};
   }
 
   try {
-    const body = JSON.parse(event.body || "{}");
-    const tier = String(body.tier || "single").toLowerCase(); // "single" | "drift"
-    const pool = String(body.pool || "").toLowerCase();
-    const nextPath = String(body.next || "/index.html");
+    return JSON.parse(event.body || "{}");
+  } catch {
+    return {};
+  }
+}
 
-    if (!nextPath.startsWith("/")) {
-      return {
-        statusCode: 400,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ error: "Invalid next path" }),
-      };
+function sanitizePath(path, fallback) {
+  if (typeof path !== "string") return fallback;
+  return path.startsWith("/") ? path : fallback;
+}
+
+exports.handler = async (event) => {
+  try {
+    if (event.httpMethod !== "POST" && event.httpMethod !== "GET") {
+      return { statusCode: 405, body: "Method Not Allowed" };
     }
 
-    const siteUrl = cleanSiteUrl(process.env.SITE_URL);
+    const body = parseBody(event);
 
-    // send Stripe back to the Netlify SUCCESS function
-    const successUrl =
-      `${siteUrl}/.netlify/functions/success` +
-      `?session_id={CHECKOUT_SESSION_ID}` +
-      `&next=${encodeURIComponent(nextPath)}` +
-      `&tier=${encodeURIComponent(tier)}` +
-      `&pool=${encodeURIComponent(pool)}`;
+    const plan = String(body.plan || "driftpass").toLowerCase();
+    const selectedPlan = PRICING[plan] || PRICING.driftpass;
 
-    const cancelUrl = `${siteUrl}${nextPath}?canceled=1`;
+    const successPath = sanitizePath(body.success, "/success");
+    const cancelPath = sanitizePath(body.cancel, "/token-booth");
 
-    const isDrift = tier === "drift";
-    const priceId = isDrift ? PRICE_DRIFT : PRICE_SINGLE;
-    const mode = isDrift ? "subscription" : "payment";
+    const siteUrl = (process.env.SITE_URL || process.env.URL || "https://reeflux.com").replace(/\/$/, "");
 
     const session = await stripe.checkout.sessions.create({
-      mode,
-      line_items: [{ price: priceId, quantity: 1 }],
-      success_url: successUrl,
-      cancel_url: cancelUrl,
-      metadata: { tier, pool, next: nextPath },
-      allow_promotion_codes: true,
+      mode: "payment",
+      payment_method_types: ["card"],
+      line_items: [
+        {
+          price_data: {
+            currency: "usd",
+            product_data: {
+              name: selectedPlan.name,
+              description: selectedPlan.description,
+            },
+            unit_amount: selectedPlan.amount,
+          },
+          quantity: 1,
+        },
+      ],
+      success_url: `${siteUrl}${successPath}`,
+      cancel_url: `${siteUrl}${cancelPath}`,
+      metadata: {
+        plan,
+      },
     });
 
     return {
@@ -78,15 +79,11 @@ exports.handler = async (event) => {
       body: JSON.stringify({ url: session.url }),
     };
   } catch (err) {
-    console.error("Checkout error:", err);
+    console.error("Stripe checkout error:", err);
     return {
       statusCode: 500,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        error: "Checkout failed",
-        message: err && err.message ? err.message : String(err),
-        type: err && err.type ? err.type : undefined,
-      }),
+      body: JSON.stringify({ error: "Checkout failed" }),
     };
   }
 };

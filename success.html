@@ -2,9 +2,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta charset="UTF-8" />
-  <title>Access Granted · Reeflux</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Access Ready · Reeflux</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -12,45 +12,134 @@
   <link rel="stylesheet" href="/styles.css" />
 </head>
 
-<body>
+<body class="success">
+  <audio id="reefAudio" preload="auto" loop>
+    <source src="/assets/reeflux.mp3" type="audio/mpeg" />
+  </audio>
+
   <div class="poolShell">
+    <div class="siteHeader">
+      <a class="backLink" href="/index.html">← Reef</a>
+      <div class="titleBlock">
+        <h1>Access Ready</h1>
+        <p>reefpass=true · this device is unlocked</p>
+      </div>
+      <button class="audioBtn" id="audioToggle" aria-label="Toggle ambient audio" aria-pressed="false">
+        Play Audio
+      </button>
+    </div>
+
     <section class="panel panel--padded">
-      <h1 style="margin-top:0;">Access granted.</h1>
-      <p>Sealing pass on this device… returning you to the pool.</p>
-      <p class="smallNote" id="successNext">…</p>
+      <h2>Access set on this device.</h2>
+      <p>
+        Your pass is active in local storage. Enter Reef, open any pool, or refresh access if you just completed checkout.
+      </p>
+
+      <div class="poolMetaRow">
+        <span class="tag" id="passState">reefpass: pending</span>
+        <span class="tag" id="passTime">time: checking</span>
+      </div>
+
+      <div class="pillRow" style="margin-top:14px;">
+        <a class="pillLink" href="/">Enter Reef (Home)</a>
+        <a class="pillLink" href="/#pools">Open Pools</a>
+        <button class="ghostBtn" type="button" id="successRefreshAccess">Refresh Access</button>
+      </div>
+
+      <div class="pillRow" style="margin-top:12px;">
+        <a class="pillLink" href="/ambient.html">Ambient</a>
+        <a class="pillLink" href="/fractal.html">Fractal</a>
+        <a class="pillLink" href="/sandbox.html">Sandbox</a>
+        <a class="pillLink" href="/tide-deck.html">Tide Deck</a>
+      </div>
+
+      <div class="smallNote" style="margin-top:12px;">
+        If you aren’t redirected, click Enter Reef.
+        <br />
+        This is a soft gate: access is stored in your browser and can be refreshed here.
+      </div>
+
+      <div class="pillRow" style="margin-top:12px;">
+        <button class="ghostBtn" id="clearPass">Clear Local Pass</button>
+      </div>
     </section>
+
+    <footer class="panel footer">
+      <div>Reeflux · Success</div>
+      <nav>
+        <a href="/">Home</a>
+        <a href="/token-booth">Token Booth</a>
+        <a href="/rules.html">Rules</a>
+      </nav>
+    </footer>
   </div>
 
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
   <script>
+    // --- Reeflux soft-gate: set reefpass=true ---
     (function () {
-      const params = new URLSearchParams(window.location.search);
+      const KEY = "reefpass";
+      const TS  = "reefpass_set_at";
 
-      const tier = (params.get("tier") || "single").toLowerCase();
-      const pool = (params.get("pool") || "unknown").toLowerCase();
-      const next = params.get("next") || "/index.html";
-
-      // Store access:
-      // - drift pass unlocks all pools
-      // - single unlocks only the purchased pool
-      try {
-        const now = String(Date.now());
-        if (tier === "drift") {
-          localStorage.setItem("reefpass_drift", "true");
-          localStorage.setItem("reefpass_drift_at", now);
-        } else {
-          localStorage.setItem(`reefpass_pool_${pool}`, "true");
-          localStorage.setItem(`reefpass_pool_${pool}_at`, now);
+      function setAccess() {
+        try {
+          localStorage.setItem(KEY, "true");
+          localStorage.setItem(TS, new Date().toISOString());
+        } catch (e) {
+          // If storage is blocked, we can still show the user what happened
         }
-      } catch (e) {}
+      }
 
-      const el = document.getElementById("successNext");
-      if (el) el.textContent = `Redirecting to: ${next}`;
+      const passState = document.getElementById("passState");
+      const passTime = document.getElementById("passTime");
 
-      // Go back
-      setTimeout(() => {
-        window.location.href = next;
-      }, 700);
+      let state = "unknown";
+      let time = "pending";
+
+      function syncTags() {
+        try {
+          state = localStorage.getItem(KEY) || "false";
+          time = localStorage.getItem(TS) || "pending";
+        } catch (e) {}
+
+        if (passState) passState.textContent = `reefpass: ${state}`;
+        if (passTime) passTime.textContent = `time: ${time}`;
+      }
+
+      setAccess();
+      syncTags();
+
+      const clearBtn = document.getElementById("clearPass");
+      if (clearBtn) {
+        clearBtn.addEventListener("click", () => {
+          try {
+            localStorage.removeItem(KEY);
+            localStorage.removeItem(TS);
+          } catch (e) {}
+          if (passState) passState.textContent = "reefpass: false";
+          if (passTime) passTime.textContent = "time: cleared";
+        });
+      }
+
+      const refreshBtn = document.getElementById("successRefreshAccess");
+      if (refreshBtn) {
+        refreshBtn.addEventListener("click", () => {
+          setAccess();
+          syncTags();
+          if (typeof window.__reefluxRecheckGate === "function") {
+            window.__reefluxRecheckGate();
+          }
+        });
+      }
+
+      window.setTimeout(() => {
+        window.location.assign("/");
+      }, 2600);
     })();
   </script>
+
+  <!-- Keep shared behaviors (audio/toast) -->
+  <script src="/app.js" defer></script>
 </body>
 </html>

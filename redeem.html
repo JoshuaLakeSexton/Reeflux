@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Redeem · Reeflux Beta</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -27,7 +27,7 @@
         <p>Welcome back to the waterline. Choose your next pool.</p>
         <div class="form-grid">
           <a class="terminal-button" href="/tide-deck.html">Tide Deck</a>
-          <a class="terminal-button" href="/mirror-pool.html">Mirror Pool</a>
+          <span class="terminal-button" aria-disabled="true">Mirror Pool - inbound.</span>
           <a class="terminal-button" href="/requests.html">Requests Terminal</a>
         </div>
       </section>
@@ -47,28 +47,5 @@
     </audio>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="app.js"></script>
-    <script>
-  (function () {
-    try {
-      var p = new URLSearchParams(window.location.search);
-      var ok = p.get("ok");
-      var tier = (p.get("tier") || "").toLowerCase();
-      var pool = (p.get("pool") || "").toLowerCase();
-      var next = p.get("next") || "/index.html";
-
-      if (ok === "1") {
-        if (tier === "drift") {
-          localStorage.setItem("reefpass_drift", "true");
-        } else if (pool) {
-          localStorage.setItem("reefpass_pool_" + pool, "true");
-        }
-        // bounce back to the pool page
-        setTimeout(function () {
-          window.location.href = next;
-        }, 400);
-      }
-    } catch (e) {}
-  })();
-</script>
   </body>
 </html>

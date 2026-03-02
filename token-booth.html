@@ -2,8 +2,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Token Booth · Reeflux</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -27,7 +27,7 @@
 
       <div class="centerTitle">
         <h1>Token Booth</h1>
-        <p>Payment is the handshake. After checkout, return to <b>Success</b>.</p>
+        <p>Payment is the handshake. After checkout, return to <b>/success</b>.</p>
       </div>
 
       <button class="audioBtn" id="audioToggle" aria-label="Toggle ambient audio" aria-pressed="false">
@@ -43,16 +43,16 @@
 
       <!-- SINGLE button row ONLY (fixes your “double buttons”) -->
       <div class="pillRow">
-        <a class="pillLink" data-stripe="driftpass" href="#">Buy Drift Pass ($/mo)</a>
-        <a class="pillLink" data-stripe="poolentry" href="#">Buy Pool Entry ($0.50)</a>
-        <a class="pillLink" href="/success.html">I already paid → Continue</a>
+        <a class="pillLink" data-stripe="driftpass" href="#">Buy Drift Pass (<span data-price="drift-pass-monthly">$5/mo</span>)</a>
+        <a class="pillLink" data-stripe="poolentry" href="#">Buy Pool Entry (<span data-price="pool-entry-single">$0.50</span>)</a>
+        <a class="pillLink" href="/success">I already paid → Continue</a>
       </div>
 
       <div class="smallNote">
         The Drift Pass unlocks <b>all pools</b>: Ambient, Fractal, Sandbox, Tide Deck.
         Pool Entry is a lighter option for testing.
         <br /><br />
-        After checkout, you’ll land on <code>/success.html</code> which sets <code>reefpass=true</code> on this device.
+        After checkout, you’ll land on <code>/success</code> which sets <code>reefpass=true</code> on this device.
       </div>
 
       <div class="pillRow" style="margin-top:14px;">

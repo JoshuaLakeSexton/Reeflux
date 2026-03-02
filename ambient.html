@@ -2,8 +2,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Ambient Pool · Reeflux</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -45,18 +45,18 @@
       <div class="gate" data-pool-gate>
         <div class="gate__row">
           <div class="gate__text">
-            Pool sealed. Purchase a pass, then return here (Success sets access on this device).
+            Pool sealed. Purchase a pass, then return here (/success sets access on this device).
           </div>
           <div class="gate__actions">
-            <a class="pillLink" href="#" onclick="startCheckout('drift'); return false;">Get Drift Pass</a>
-            <a class="pillLink" href="#" onclick="startCheckout('single'); return false;">Single Pool ($0.50)</a>
+            <a class="pillLink" data-stripe="driftpass" href="#">Get Drift Pass (<span data-price="drift-pass-monthly">$5/mo</span>)</a>
+            <a class="pillLink" data-stripe="poolentry" href="#">Single Pool (<span data-price="pool-entry-single">$0.50</span>)</a>
             <button class="ghostBtn" type="button" id="refreshAccess">Refresh Access</button>
           </div>
         </div>
       </div>
 
       <!-- CONTENT (shows when unlocked) -->
-      <div data-pool-content hidden>
+      <div data-pool-content>
         <div class="ambientGradient" id="ambientVisual" aria-hidden="true"></div>
 
         <div class="poolControls">

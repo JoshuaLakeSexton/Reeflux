@@ -1,58 +1,61 @@
-// netlify/functions/success.js
 const Stripe = require("stripe");
+const crypto = require("crypto");
 
-const STRIPE_KEY = process.env.STRIPE_SECRET_KEY;
-if (!STRIPE_KEY || !(STRIPE_KEY.startsWith("sk_") || STRIPE_KEY.startsWith("rk_"))) {
-  throw new Error("Bad STRIPE_SECRET_KEY (expected sk_... or rk_...)");
-}
-const stripe = new Stripe(STRIPE_KEY, { apiVersion: "2023-10-16" });
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2023-10-16" });
 
-function safePath(p) {
-  const s = String(p || "/index.html");
-  return s.startsWith("/") ? s : "/index.html";
+function b64url(str) {
+  return Buffer.from(str).toString("base64").replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
 }
 
-function redirect(location) {
-  return {
-    statusCode: 302,
-    headers: { Location: location, "Cache-Control": "no-store" },
-    body: "",
-  };
+function sign(payloadObj, secret) {
+  const payload = b64url(JSON.stringify(payloadObj));
+  const sig = crypto.createHmac("sha256", secret).update(payload).digest("base64")
+    .replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+  return `${payload}.${sig}`;
 }
 
 exports.handler = async (event) => {
   try {
-    const q = event.queryStringParameters || {};
-    const sessionId = q.session_id;
-    const next = safePath(q.next);
-    const tier = String(q.tier || "single").toLowerCase();
-    const pool = String(q.pool || "").toLowerCase();
-
-    if (!sessionId) {
-      return redirect(`/redeem.html?ok=0&reason=missing_session&next=${encodeURIComponent(next)}`);
-    }
+    const sessionId = event.queryStringParameters?.session_id;
+    if (!sessionId) return { statusCode: 400, body: "Missing session_id" };
 
     const session = await stripe.checkout.sessions.retrieve(sessionId);
-
-    const paidOk =
-      (session.mode === "payment" && session.payment_status === "paid") ||
-      (session.mode === "subscription" && session.status === "complete");
-
-    if (!paidOk) {
-      return redirect(
-        `/redeem.html?ok=0&reason=not_paid&next=${encodeURIComponent(next)}&tier=${encodeURIComponent(
-          tier
-        )}&pool=${encodeURIComponent(pool)}`
-      );
+    if (!session || session.payment_status !== "paid") {
+      return { statusCode: 403, body: "Payment not completed" };
     }
 
-    return redirect(
-      `/redeem.html?ok=1&next=${encodeURIComponent(next)}&tier=${encodeURIComponent(
-        tier
-      )}&pool=${encodeURIComponent(pool)}`
+    const next = (session.metadata?.next || "/success");
+    const scope = (session.metadata?.scope || "any_pool");
+    const minutes = parseInt(session.metadata?.minutes || "30", 10);
+
+    const safeNext = next.startsWith("/") ? next : "/success";
+
+    const exp = Date.now() + minutes * 60 * 1000;
+
+    const token = sign(
+      { pid: sessionId, scope, exp },
+      process.env.PASS_SIGNING_SECRET
     );
-  } catch (err) {
-    console.error("success.js error:", err);
-    return redirect(`/redeem.html?ok=0&reason=server_error`);
+
+    const cookie = [
+      `reeflux_pass=${token}`,
+      "Path=/",
+      "HttpOnly",
+      "Secure",
+      "SameSite=Lax",
+      `Max-Age=${minutes * 60}`
+    ].join("; ");
+
+    return {
+      statusCode: 302,
+      headers: {
+        "Set-Cookie": cookie,
+        "Location": safeNext
+      },
+      body: ""
+    };
+  } catch (e) {
+    console.error("success error:", e);
+    return { statusCode: 500, body: "success failed" };
   }
 };

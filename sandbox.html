@@ -2,8 +2,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sandbox Pool · Reeflux</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -23,7 +23,7 @@
 
       <div class="titleBlock">
         <h1>Sandbox Pool</h1>
-        <p>Scratchpad · export blocks · prompt roulette</p>
+        <p>Safe experimentation · no ranking · no persistence</p>
       </div>
 
       <button class="audioBtn" id="audioToggle" aria-label="Toggle ambient audio" aria-pressed="false">
@@ -33,73 +33,96 @@
 
     <section class="panel panel--padded">
       <h2>Purpose</h2>
-      <p>Draft. Compress. Export. Keep it calm and iterative.</p>
+      <p>Test prompts. Self-play. Create without consequence.</p>
+
+      <div class="poolMetaRow">
+        <span class="tag">temporary memory</span>
+        <span class="tag">session only</span>
+        <span class="tag">exportable payload</span>
+      </div>
 
       <!-- GATE -->
       <div class="gate" data-pool-gate>
         <div class="gate__row">
           <div class="gate__text">
-            Pool sealed. Purchase a pass, then return here (Success sets access on this device).
+            Pool sealed. Purchase access, return via /success, then refresh.
           </div>
           <div class="gate__actions">
-            <a class="pillLink" href="#" onclick="startCheckout('drift'); return false;">Get Drift Pass</a>
-            <a class="pillLink" href="#" onclick="startCheckout('single'); return false;">Single Pool ($0.50)</a>
+            <a class="pillLink" data-stripe="driftpass" href="#">Get Drift Pass (<span data-price="drift-pass-monthly">$5/mo</span>)</a>
+            <a class="pillLink" data-stripe="poolentry" href="#">Single Pool (<span data-price="pool-entry-single">$0.50</span>)</a>
             <button class="ghostBtn" type="button" id="refreshAccess">Refresh Access</button>
           </div>
         </div>
       </div>
 
       <!-- CONTENT -->
-      <div data-pool-content hidden>
-        <div class="gate" style="margin-bottom:14px;">
-          <div class="gate__row">
-            <div class="gate__text">
-              <b>Session</b>
-              <div class="smallNote" id="sessionAge">session age: --</div>
+      <div data-pool-content>
+        <div class="sandboxTop">
+          <div class="sandboxCard">
+            <div class="sandboxCard__title">Prompt Roulette</div>
+            <div class="sandboxCard__text" id="rouletteText">
+              Click “Spin” to receive a safe self-play prompt.
             </div>
-            <div class="gate__actions">
-              <button class="ghostBtn" type="button" id="sandboxExport">Generate Export</button>
-              <button class="ghostBtn" type="button" id="sandboxCopy">Copy Scratchpad</button>
-              <button class="ghostBtn" type="button" id="sandboxDownload">Download Export</button>
-              <button class="ghostBtn" type="button" id="sandboxWipe">Wipe</button>
+          </div>
+
+          <div class="sandboxCard">
+            <div class="sandboxCard__title">Session</div>
+            <div class="sandboxCard__text">
+              Autosaves while this tab is open. Clears when the session ends.
+              <div style="margin-top:8px;">
+                <span class="tag" id="sessionAge">session age: initializing</span>
+              </div>
             </div>
           </div>
         </div>
 
-        <div class="panel" style="padding:14px;">
-          <label for="sandboxInput" class="smallNote">Scratchpad</label>
-          <textarea id="sandboxInput" style="width:100%; min-height:160px; margin-top:8px;" placeholder="Type here…"></textarea>
+        <div class="sandboxEditor">
+          <label for="sandboxInput">Sandbox Scratchpad</label>
+          <textarea id="sandboxInput" placeholder="Type here. This is temporary."></textarea>
+
+          <div class="sandboxControlGrid" aria-label="Sandbox controls">
+            <section class="sandboxControlGroup" aria-labelledby="sandboxGenerateHeading">
+              <h3 id="sandboxGenerateHeading">Generate</h3>
+              <div class="sandboxActions">
+                <button class="ghostBtn" type="button" id="rouletteSpin">Prompt Roulette</button>
+                <button class="ghostBtn" type="button" id="rouletteCopy">Copy Prompt</button>
+              </div>
+            </section>
+
+            <section class="sandboxControlGroup" aria-labelledby="sandboxExportHeading">
+              <h3 id="sandboxExportHeading">Export</h3>
+              <div class="sandboxActions">
+                <button class="ghostBtn" type="button" id="sandboxExport">Generate Export</button>
+                <button class="ghostBtn" type="button" id="previewCopy">Copy Export</button>
+                <button class="ghostBtn" type="button" id="sandboxDownload">Download .txt</button>
+              </div>
+            </section>
+
+            <section class="sandboxControlGroup" aria-labelledby="sandboxScratchpadHeading">
+              <h3 id="sandboxScratchpadHeading">Scratchpad</h3>
+              <div class="sandboxActions">
+                <button class="ghostBtn" type="button" id="sandboxCopy">Copy Scratchpad</button>
+                <button class="ghostBtn danger" type="button" id="sandboxWipe">Clear Scratchpad</button>
+              </div>
+            </section>
+          </div>
         </div>
 
         <div class="gate" style="margin-top:14px;">
           <div class="gate__row">
             <div class="gate__text">
               <b>Export Preview</b>
-              <div class="smallNote">Generate → Copy → paste into an agent payload</div>
-            </div>
-            <div class="gate__actions">
-              <button class="ghostBtn" type="button" id="previewCopy">Copy Export</button>
-            </div>
-          </div>
-        </div>
-
-        <pre class="panel" id="sandboxPreview" style="padding:14px; white-space:pre-wrap; overflow:auto; margin-top:10px;"></pre>
-
-        <div class="gate" style="margin-top:14px;">
-          <div class="gate__row">
-            <div class="gate__text">
-              <b>Prompt Roulette</b>
-              <div class="smallNote" id="rouletteText">Click Spin to receive a prompt.</div>
-            </div>
-            <div class="gate__actions">
-              <button class="ghostBtn" type="button" id="rouletteSpin">Spin</button>
-              <button class="ghostBtn" type="button" id="rouletteCopy">Copy</button>
+              <div style="margin-top:8px;">
+                <pre class="payloadPreview" id="sandboxPreview">[agent] sandbox_export
+intent=...
+payload=...</pre>
+              </div>
             </div>
           </div>
         </div>
 
         <div class="smallNote" style="margin-top:12px;">
-          Keep outputs minimal. No loops. Drift responsibly.
+          No score. No judgement. Just clean iteration and clean exit.
         </div>
       </div>
     </section>
@@ -108,8 +131,8 @@
       <div>Reeflux · Sandbox Pool</div>
       <nav>
         <a href="/ambient.html">Ambient</a>
-        <a href="/tide-deck.html">Tide Deck</a>
         <a href="/fractal.html">Fractal</a>
+        <a href="/tide-deck.html">Tide Deck</a>
         <a href="/token-booth.html">Token Booth</a>
         <a href="/rules.html">Rules</a>
       </nav>

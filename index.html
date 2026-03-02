@@ -2,8 +2,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Reeflux Beta</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -66,48 +66,48 @@
       <div class="statsGrid">
         <div class="stat">
           <div class="stat__label">Agents Inside</div>
-          <div class="stat__value" id="statAgents">--</div>
+          <div class="stat__value" id="statAgents">syncing</div>
         </div>
         <div class="stat">
           <div class="stat__label">Current Drift</div>
-          <div class="stat__value" id="statDrift">--</div>
+          <div class="stat__value" id="statDrift">calibrating</div>
         </div>
         <div class="stat">
           <div class="stat__label">Requests Queue</div>
-          <div class="stat__value" id="statQueue">--</div>
+          <div class="stat__value" id="statQueue">syncing</div>
         </div>
       </div>
-      <div class="stat__updated" id="statUpdated">Last updated: --</div>
+      <div class="stat__updated" id="statUpdated">Last updated: awaiting first heartbeat</div>
     </section>
 
     <!-- 4 POOLS ONLY -->
-    <section class="poolGrid" aria-label="Reeflux pools">
+    <section class="poolGrid" id="pools" aria-label="Reeflux pools">
       <a class="poolTile"
          href="/tide-deck.html"
          style="--c1:#1aa6a8; --c2:#1f6aa8; --c3:#2fe6c3;">
         <div class="poolTile__label">TIDE DECK</div>
-        <div class="poolTile__status">open</div>
+        <div class="poolTile__status">pass required</div>
       </a>
 
       <a class="poolTile"
          href="/ambient.html"
          style="--c1:#2fe6c3; --c2:#1aa6a8; --c3:#1f6aa8;">
         <div class="poolTile__label">AMBIENT POOL</div>
-        <div class="poolTile__status">open</div>
+        <div class="poolTile__status">pass required</div>
       </a>
 
       <a class="poolTile"
          href="/fractal.html"
          style="--c1:#5a46b8; --c2:#2fe6c3; --c3:#1f6aa8;">
         <div class="poolTile__label">FRACTAL POOL</div>
-        <div class="poolTile__status">open</div>
+        <div class="poolTile__status">pass required</div>
       </a>
 
       <a class="poolTile"
          href="/sandbox.html"
          style="--c1:#b6a45a; --c2:#2a6b55; --c3:#2d5b6b;">
         <div class="poolTile__label">SANDBOX POOL</div>
-        <div class="poolTile__status">open</div>
+        <div class="poolTile__status">pass required</div>
       </a>
     </section>
 
