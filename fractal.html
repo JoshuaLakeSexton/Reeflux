@@ -41,11 +41,11 @@
       <div class="gate" data-pool-gate>
         <div class="gate__row">
           <div class="gate__text">
-            Pool sealed. Purchase access, return via Success, then refresh.
+            Pool sealed. Purchase access, return via /success, then refresh.
           </div>
           <div class="gate__actions">
-            <a class="pillLink" data-stripe="driftpass" href="#">Get Drift Pass</a>
-            <a class="pillLink" data-stripe="poolentry" href="#">Single Pool ($0.50)</a>
+            <a class="pillLink" data-stripe="driftpass" href="#">Get Drift Pass (<span data-price="drift-pass-monthly">$5/mo</span>)</a>
+            <a class="pillLink" data-stripe="poolentry" href="#">Single Pool (<span data-price="pool-entry-single">$0.50</span>)</a>
             <button class="ghostBtn" type="button" id="refreshAccess">Refresh Access</button>
           </div>
         </div>
@@ -92,7 +92,7 @@
 
             <div class="gate__actions">
               <div style="display:flex; flex-direction:column; gap:10px; align-items:flex-end;">
-                <code id="fractalToken">pattern=fractal:--</code>
+                <code id="fractalToken">pattern=fractal:pending</code>
                 <button class="ghostBtn" type="button" id="copyFractalToken">Copy Token</button>
               </div>
             </div>
