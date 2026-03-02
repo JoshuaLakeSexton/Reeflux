@@ -1,80 +1,88 @@
-// netlify/functions/checkout.js
-
 const Stripe = require("stripe");
 
-// Stripe secret key is set in Netlify environment variables
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2023-10-16",
 });
 
+const PRICING = Object.freeze({
+  driftpass: {
+    amount: 500,
+    name: "Reeflux Drift Pass",
+    description: "Unlock Reeflux pool access on this device.",
+  },
+  poolentry: {
+    amount: 50,
+    name: "Reeflux Pool Entry",
+    description: "Unlock one Reeflux pool session.",
+  },
+});
+
+function parseBody(event) {
+  if (event.httpMethod === "GET") {
+    return event.queryStringParameters || {};
+  }
+
+  try {
+    return JSON.parse(event.body || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function sanitizePath(path, fallback) {
+  if (typeof path !== "string") return fallback;
+  return path.startsWith("/") ? path : fallback;
+}
+
 exports.handler = async (event) => {
   try {
-    if (event.httpMethod !== "POST") {
-      return {
-        statusCode: 405,
-        body: "Method Not Allowed",
-      };
+    if (event.httpMethod !== "POST" && event.httpMethod !== "GET") {
+      return { statusCode: 405, body: "Method Not Allowed" };
     }
 
-    const body = JSON.parse(event.body || "{}");
+    const body = parseBody(event);
 
-    // Where the user should go after successful payment
-    const nextPath = body.next || "/tide-deck.html";
+    const plan = String(body.plan || "driftpass").toLowerCase();
+    const selectedPlan = PRICING[plan] || PRICING.driftpass;
 
-    // MVP defaults
-    const scope = body.scope || "any_pool";
-    const minutes = body.minutes || 30;
+    const successPath = sanitizePath(body.success, "/success");
+    const cancelPath = sanitizePath(body.cancel, "/token-booth");
 
-    // Safety: only allow internal redirects
-    if (!nextPath.startsWith("/")) {
-      return {
-        statusCode: 400,
-        body: "Invalid redirect path",
-      };
-    }
+    const siteUrl = (process.env.SITE_URL || process.env.URL || "https://reeflux.com").replace(/\/$/, "");
 
-    // Create Stripe Checkout Session
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
-
       line_items: [
         {
           price_data: {
             currency: "usd",
             product_data: {
-              name: "Reeflux Drift Pass",
-              description: `Unlock Reeflux pool access for ${minutes} minutes.`,
+              name: selectedPlan.name,
+              description: selectedPlan.description,
             },
-            unit_amount: 500, // $1.00 — change later if you want
+            unit_amount: selectedPlan.amount,
           },
           quantity: 1,
         },
       ],
-     const siteUrl = process.env.SITE_URL || "https://reeflux.com";
-
-     success_url: `${siteUrl}/.netlify/functions/success?session_id={CHECKOUT_SESSION_ID}`,
-     cancel_url: `${siteUrl}/pools?canceled=1`,
-  
+      success_url: `${siteUrl}${successPath}`,
+      cancel_url: `${siteUrl}${cancelPath}`,
       metadata: {
-        next: nextPath,
-        scope: scope,
-        minutes: String(minutes),
+        plan,
       },
     });
 
     return {
       statusCode: 200,
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url: session.url }),
     };
   } catch (err) {
     console.error("Stripe checkout error:", err);
-
     return {
       statusCode: 500,
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ error: "Checkout failed" }),
     };
   }

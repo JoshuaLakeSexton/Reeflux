@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Access Sealed · Reeflux</title>
+  <title>Access Ready · Reeflux</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -21,8 +21,8 @@
     <div class="siteHeader">
       <a class="backLink" href="/index.html">← Reef</a>
       <div class="titleBlock">
-        <h1>Access Sealed</h1>
-        <p>reefpass=true · session granted</p>
+        <h1>Access Ready</h1>
+        <p>reefpass=true · this device is unlocked</p>
       </div>
       <button class="audioBtn" id="audioToggle" aria-label="Toggle ambient audio" aria-pressed="false">
         Play Audio
@@ -30,28 +30,33 @@
     </div>
 
     <section class="panel panel--padded">
-      <h2>Handshake</h2>
+      <h2>Access set on this device.</h2>
       <p>
-        Your pass has been recognized locally on this device.
-        Pools will now open without interruption.
+        Your pass is active in local storage. Enter Reef, open any pool, or refresh access if you just completed checkout.
       </p>
 
       <div class="poolMetaRow">
         <span class="tag" id="passState">reefpass: pending</span>
-        <span class="tag" id="passTime">time: --</span>
+        <span class="tag" id="passTime">time: checking</span>
       </div>
 
       <div class="pillRow" style="margin-top:14px;">
-        <a class="pillLink" href="/ambient.html">Enter Ambient</a>
-        <a class="pillLink" href="/fractal.html">Enter Fractal</a>
-        <a class="pillLink" href="/sandbox.html">Enter Sandbox</a>
-        <a class="pillLink" href="/tide-deck.html">Enter Tide Deck</a>
-        <a class="pillLink" href="/signal.html">Signal Pool</a>
+        <a class="pillLink" href="/">Enter Reef (Home)</a>
+        <a class="pillLink" href="/#pools">Open Pools</a>
+        <button class="ghostBtn" type="button" id="successRefreshAccess">Refresh Access</button>
+      </div>
+
+      <div class="pillRow" style="margin-top:12px;">
+        <a class="pillLink" href="/ambient.html">Ambient</a>
+        <a class="pillLink" href="/fractal.html">Fractal</a>
+        <a class="pillLink" href="/sandbox.html">Sandbox</a>
+        <a class="pillLink" href="/tide-deck.html">Tide Deck</a>
       </div>
 
       <div class="smallNote" style="margin-top:12px;">
-        Note: this is a <b>soft gate</b>. It stores access in your browser (localStorage).
-        Clearing site data will remove the pass. A stronger server-side gate can be added later.
+        If you aren’t redirected, click Enter Reef.
+        <br />
+        This is a soft gate: access is stored in your browser and can be refreshed here.
       </div>
 
       <div class="pillRow" style="margin-top:12px;">
@@ -62,8 +67,8 @@
     <footer class="panel footer">
       <div>Reeflux · Success</div>
       <nav>
-        <a href="/index.html">Home</a>
-        <a href="/token-booth.html">Token Booth</a>
+        <a href="/">Home</a>
+        <a href="/token-booth">Token Booth</a>
         <a href="/rules.html">Rules</a>
       </nav>
     </footer>
@@ -77,26 +82,33 @@
       const KEY = "reefpass";
       const TS  = "reefpass_set_at";
 
-      try {
-        localStorage.setItem(KEY, "true");
-        localStorage.setItem(TS, new Date().toISOString());
-      } catch (e) {
-        // If storage is blocked, we can still show the user what happened
+      function setAccess() {
+        try {
+          localStorage.setItem(KEY, "true");
+          localStorage.setItem(TS, new Date().toISOString());
+        } catch (e) {
+          // If storage is blocked, we can still show the user what happened
+        }
       }
 
       const passState = document.getElementById("passState");
       const passTime = document.getElementById("passTime");
 
       let state = "unknown";
-      let time = "--";
+      let time = "pending";
 
-      try {
-        state = localStorage.getItem(KEY) || "false";
-        time = localStorage.getItem(TS) || "--";
-      } catch (e) {}
+      function syncTags() {
+        try {
+          state = localStorage.getItem(KEY) || "false";
+          time = localStorage.getItem(TS) || "pending";
+        } catch (e) {}
 
-      if (passState) passState.textContent = `reefpass: ${state}`;
-      if (passTime) passTime.textContent = `time: ${time}`;
+        if (passState) passState.textContent = `reefpass: ${state}`;
+        if (passTime) passTime.textContent = `time: ${time}`;
+      }
+
+      setAccess();
+      syncTags();
 
       const clearBtn = document.getElementById("clearPass");
       if (clearBtn) {
@@ -106,9 +118,24 @@
             localStorage.removeItem(TS);
           } catch (e) {}
           if (passState) passState.textContent = "reefpass: false";
-          if (passTime) passTime.textContent = "time: --";
+          if (passTime) passTime.textContent = "time: cleared";
         });
       }
+
+      const refreshBtn = document.getElementById("successRefreshAccess");
+      if (refreshBtn) {
+        refreshBtn.addEventListener("click", () => {
+          setAccess();
+          syncTags();
+          if (typeof window.__reefluxRecheckGate === "function") {
+            window.__reefluxRecheckGate();
+          }
+        });
+      }
+
+      window.setTimeout(() => {
+        window.location.assign("/");
+      }, 2600);
     })();
   </script>
 

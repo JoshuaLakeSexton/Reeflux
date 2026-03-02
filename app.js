@@ -14,9 +14,18 @@
 "use strict";
 
 /* -------------------- STRIPE LINKS -------------------- */
-const REEFLUX_DRIFT_PASS_URL = "https://buy.stripe.com/aFacN75Kj64hbSR3DL6wE00"; // $/month
-const POOL_ENTRY_URL = "https://buy.stripe.com/eVq8wR4Gf1O14qp0rz6wE01";         // $0.50/pool
-const MIRROR_SEAL_URL = "https://buy.stripe.com/eVq8wR4Gf1O14qp0rz6wE01";        // optional
+const PRICING = Object.freeze({
+  DRIFT_PASS_MONTHLY: "$5/mo",
+  POOL_ENTRY_SINGLE: "$0.50",
+});
+
+const CHECKOUT_ENDPOINT = "/.netlify/functions/checkout";
+
+const STRIPE_LINKS = Object.freeze({
+  driftpass: "https://buy.stripe.com/aFacN75Kj64hbSR3DL6wE00",
+  poolentry: "https://buy.stripe.com/eVq8wR4Gf1O14qp0rz6wE01",
+  mirror: "https://buy.stripe.com/eVq8wR4Gf1O14qp0rz6wE01",
+});
 
 /* -------------------- KEYS -------------------- */
 const audioStateKey = "reefAudioState";
@@ -121,23 +130,37 @@ function loadStats() {
   const statsEl = document.querySelector("[data-stats]");
   if (!statsEl) return;
 
-  fetch("/stats.json")
+  function renderStats(stats) {
+    const agents = document.getElementById("statAgents");
+    const drift = document.getElementById("statDrift");
+    const queue = document.getElementById("statQueue");
+    const updated = document.getElementById("statUpdated");
+
+    const agentsInside = Number.isFinite(Number(stats?.agents_inside))
+      ? String(Number(stats.agents_inside))
+      : "0";
+    const currentDrift = stats?.current_drift ? String(stats.current_drift) : "offline";
+    const requestsQueue = Number.isFinite(Number(stats?.requests_queue))
+      ? String(Number(stats.requests_queue))
+      : "0";
+    const lastUpdated = stats?.last_updated ? String(stats.last_updated) : "offline";
+
+    if (agents) agents.textContent = agentsInside;
+    if (drift) drift.textContent = currentDrift;
+    if (queue) queue.textContent = requestsQueue;
+    if (updated) updated.textContent = `Last updated: ${lastUpdated}`;
+  }
+
+  fetch("/.netlify/functions/stats")
     .then((r) => {
       if (!r.ok) throw new Error("stats");
       return r.json();
     })
-    .then((stats) => {
-      const agents = document.getElementById("statAgents");
-      const drift = document.getElementById("statDrift");
-      const queue = document.getElementById("statQueue");
-      const updated = document.getElementById("statUpdated");
-
-      if (agents) agents.textContent = stats.agents_inside ?? "--";
-      if (drift) drift.textContent = stats.current_drift ?? "--";
-      if (queue) queue.textContent = stats.requests_queue ?? "--";
-      if (updated) updated.textContent = `Last updated: ${stats.last_updated ?? "--"}`;
-    })
-    .catch(() => showToast("Stats offline."));
+    .then((stats) => renderStats(stats))
+    .catch(() => {
+      renderStats({});
+      showToast("Stats offline.");
+    });
 }
 
 /* -------------------- NETLIFY FORM HELP -------------------- */
@@ -190,23 +213,64 @@ function setupDriftToggle() {
 
 /* -------------------- STRIPE LINK INJECTION -------------------- */
 /*
-  Use data-stripe attributes instead of fragile IDs.
-  Examples:
-    <a data-stripe="driftpass" href="#">Get Drift Pass</a>
-    <a data-stripe="poolentry" href="#">Enter Pool</a>
-    <a data-stripe="mirror" href="#">Seal Mirror</a>
+  Use data-price attributes for labels and data-stripe attributes for checkout wiring.
 */
-function setupStripeButtons() {
-  const map = {
-    driftpass: REEFLUX_DRIFT_PASS_URL,
-    poolentry: POOL_ENTRY_URL,
-    mirror: MIRROR_SEAL_URL,
+function applyPricingLabels() {
+  const labels = {
+    "drift-pass-monthly": PRICING.DRIFT_PASS_MONTHLY,
+    "pool-entry-single": PRICING.POOL_ENTRY_SINGLE,
   };
+
+  document.querySelectorAll("[data-price]").forEach((el) => {
+    const key = (el.getAttribute("data-price") || "").trim();
+    const value = labels[key];
+    if (value) el.textContent = value;
+  });
+}
+
+async function startCheckout(plan, fallbackUrl) {
+  try {
+    const response = await fetch(CHECKOUT_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        plan,
+        success: "/success",
+        cancel: "/token-booth",
+      }),
+    });
+
+    if (!response.ok) throw new Error("checkout_failed");
+    const body = await response.json();
+    if (!body?.url) throw new Error("checkout_url_missing");
+
+    window.location.assign(body.url);
+    return true;
+  } catch {
+    showToast("Checkout unavailable. Opening Stripe fallback.");
+    if (fallbackUrl) window.location.assign(fallbackUrl);
+    return false;
+  }
+}
+
+function setupStripeButtons() {
+  const map = STRIPE_LINKS;
 
   document.querySelectorAll("[data-stripe]").forEach((el) => {
     const key = (el.getAttribute("data-stripe") || "").toLowerCase().trim();
     const url = map[key];
-    if (url) el.setAttribute("href", url);
+    if (!url) return;
+
+    el.setAttribute("href", url);
+    el.addEventListener("click", (event) => {
+      // Respect browser tab-opening shortcuts.
+      if (event.defaultPrevented) return;
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      if ("button" in event && event.button !== 0) return;
+
+      event.preventDefault();
+      startCheckout(key, url);
+    });
   });
 }
 
@@ -613,7 +677,7 @@ function setupSandboxPool() {
       const age = Date.now() - started;
       if (sessionAge) sessionAge.textContent = `session age: ${formatAge(age)}`;
     } catch {
-      if (sessionAge) sessionAge.textContent = "session age: --";
+      if (sessionAge) sessionAge.textContent = "session age: unavailable";
     }
     window.setTimeout(tickAge, 900);
   }
@@ -682,7 +746,7 @@ function setupSandboxPool() {
         sessionStorage.setItem(START_KEY, String(Date.now()));
       } catch {}
       updatePreview();
-      showToast("Wiped.");
+      showToast("Scratchpad cleared.");
     });
   }
 
@@ -789,26 +853,6 @@ function setupPoolGate() {
   };
 }
 
-function loadStats() {
-  const statsEl = document.querySelector("[data-stats]");
-  if (!statsEl) return;
-
-  fetch("/.netlify/functions/stats")
-    .then((r) => r.json())
-    .then((stats) => {
-      const agents = document.getElementById("statAgents");
-      const drift = document.getElementById("statDrift");
-      const queue = document.getElementById("statQueue");
-      const updated = document.getElementById("statUpdated");
-
-      if (agents) agents.textContent = stats.agents_inside ?? "--";
-      if (drift) drift.textContent = stats.current_drift ?? "--";
-      if (queue) queue.textContent = stats.requests_queue ?? "--";
-      if (updated) updated.textContent = `Last updated: ${stats.last_updated ?? "--"}`;
-    })
-    .catch(() => showToast("Stats offline."));
-}
-
 function setupHeartbeat() {
   // stable per-browser session id
   const key = "reef_session_id";
@@ -843,6 +887,7 @@ function setupHeartbeat() {
 */
 
 document.addEventListener("DOMContentLoaded", () => {
+  applyPricingLabels();
   setupAudio();
   setupTiles();
   loadStats();

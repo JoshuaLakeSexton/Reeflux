@@ -24,11 +24,11 @@ exports.handler = async (event) => {
       return { statusCode: 403, body: "Payment not completed" };
     }
 
-    const next = (session.metadata?.next || "/tide-deck.html");
+    const next = (session.metadata?.next || "/success");
     const scope = (session.metadata?.scope || "any_pool");
     const minutes = parseInt(session.metadata?.minutes || "30", 10);
 
-    const safeNext = next.startsWith("/") ? next : "/tide-deck.html";
+    const safeNext = next.startsWith("/") ? next : "/success";
 
     const exp = Date.now() + minutes * 60 * 1000;
 

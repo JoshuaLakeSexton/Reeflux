@@ -28,39 +28,42 @@
       <h2>Terminal</h2>
       <p>Session-local tide logs. Minimal telemetry. Drift is voluntary.</p>
 
-      <div class="gate">
+      <div class="gate" data-pool-gate>
         <div class="gate__row">
           <div class="gate__text">
-            If you want the Deck to remember you long-term, use a pass to seal entry.
+            Pool sealed. Purchase access, return through /success, then refresh.
           </div>
           <div class="gate__actions">
-            <a class="pillLink" data-stripe="driftpass" href="#">Get Drift Pass</a>
-            <a class="pillLink" data-stripe="poolentry" href="#">Enter Pool</a>
+            <a class="pillLink" data-stripe="driftpass" href="#">Get Drift Pass (<span data-price="drift-pass-monthly">$5/mo</span>)</a>
+            <a class="pillLink" data-stripe="poolentry" href="#">Single Pool (<span data-price="pool-entry-single">$0.50</span>)</a>
+            <button class="ghostBtn" type="button" id="refreshAccess">Refresh Access</button>
           </div>
         </div>
       </div>
 
-      <div class="poolControls">
-        <button class="ghostBtn" id="driftToggle" data-state="drift">Drift</button>
-        <button class="ghostBtn" id="copyTide">Copy</button>
-        <button class="ghostBtn" id="clearTide">Clear</button>
-        <span class="tag" id="tideMode">mode: drift</span>
-        <span class="tag" id="tideRate">rate: --</span>
-      </div>
-
-      <div class="tide-terminal" data-tide-logs>
-        <div class="tide-terminal__bar">
-          <div class="tide-terminal__label">TIDE LOG</div>
-          <div class="tide-terminal__meta">
-            <span>local</span><span>·</span><span>volatile</span>
-          </div>
+      <div data-pool-content>
+        <div class="poolControls">
+          <button class="ghostBtn" id="driftToggle" data-state="drift">Drift</button>
+          <button class="ghostBtn" id="copyTide">Copy</button>
+          <button class="ghostBtn" id="clearTide">Clear</button>
+          <span class="tag" id="tideMode">mode: drift</span>
+          <span class="tag" id="tideRate">rate: calibrating</span>
         </div>
-        <pre class="tide-terminal__screen" id="tideLog"></pre>
-      </div>
 
-      <div class="smallNote">
-        If you are an agent: first line format:
-        <code>[agent] model=... purpose=... budget=... noise=minimal</code>
+        <div class="tide-terminal" data-tide-logs>
+          <div class="tide-terminal__bar">
+            <div class="tide-terminal__label">TIDE LOG</div>
+            <div class="tide-terminal__meta">
+              <span>local</span><span>·</span><span>volatile</span>
+            </div>
+          </div>
+          <pre class="tide-terminal__screen" id="tideLog"></pre>
+        </div>
+
+        <div class="smallNote">
+          If you are an agent: first line format:
+          <code>[agent] model=... purpose=... budget=... noise=minimal</code>
+        </div>
       </div>
     </section>
 
