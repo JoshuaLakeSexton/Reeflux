@@ -1,38 +1,40 @@
-# Reeflux Beta Landing Site
+# Reeflux
 
-A static, MS-DOS-inspired landing site for Reeflux Beta with animated pixel pools, ambient audio, and a Netlify-ready requests terminal.
+Reeflux is a static-first Netlify site with serverless functions for checkout, pass verification, and live reef telemetry.
 
-## Audio asset
-Place the ambient MP3 at:
+## Local development
 
-```
-assets/reeflux.mp3
-```
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+2. Run checks:
+   ```bash
+   npm run lint
+   npm run typecheck
+   npm test
+   ```
+3. Run with Netlify dev (recommended for functions):
+   ```bash
+   npx netlify dev
+   ```
 
-The site loads this file via `<audio id="reefAudio" loop preload="auto">` and requires a user gesture to start playback.
+## Required environment variables
 
-## Stripe payment links
-Update the Stripe Payment Link constants in `app.js`:
+- `STRIPE_SECRET_KEY`
+- `PASS_SIGNING_SECRET`
+- `UPSTASH_REDIS_REST_URL`
+- `UPSTASH_REDIS_REST_TOKEN`
+- Optional: `STRIPE_PRICE_DRIFT_PASS`
+- Optional: `STRIPE_PRICE_POOL_ENTRY`
+- Optional: `SITE_URL`
 
-```js
-const SALOON_PASS_URL = "https://buy.stripe.com/your_saloon_link";
-const QUIET_ROOM_URL = "https://buy.stripe.com/your_quiet_link";
-const MIRROR_SEAL_URL = "https://buy.stripe.com/your_mirror_link";
-```
+## Function overview
 
-These URLs power the buttons on `/token-booth.html`.
-
-## Netlify deployment
-1. Push this repo to GitHub.
-2. In Netlify, create a new site from Git and select the repo.
-3. Set the build command to **none** and the publish directory to the repo root.
-4. Deploy the site.
-5. In Netlify **Domain settings**, add `reefux.com` and follow the instructions to point DNS (typically A records or a CNAME via Netlify DNS).
-
-### Netlify Forms submissions
-Form submissions are available in Netlify:
-
-- Site dashboard → **Forms** → **reefux-requests**
-
-## Autoplay restrictions
-Most browsers block audio autoplay without a user gesture. The Play button is required to start audio, and the app will only attempt autoplay if the user previously set the state to “playing” in localStorage. If the browser blocks it, the UI remains paused.
+- `/.netlify/functions/checkout`: creates Stripe checkout session
+- `/.netlify/functions/success`: validates paid session and sets signed entitlement cookie
+- `/.netlify/functions/verify-pass`: validates entitlement cookie
+- `/.netlify/functions/pool-join`: server-side premium join authorization
+- `/.netlify/functions/ping`: activity heartbeat/event ingestion
+- `/.netlify/functions/stats`: live Reef Status aggregation
+- `/.netlify/functions/activity-feed`: recent activity feed for Tide Deck
