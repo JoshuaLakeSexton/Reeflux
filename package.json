@@ -6,7 +6,8 @@
     "lint:js": "node scripts/lint-js.mjs",
     "lint:links": "node scripts/check-links.mjs",
     "typecheck": "node scripts/typecheck.mjs",
-    "test": "node --test tests/reef-functions.test.mjs"
+    "test": "node --test tests/reef-functions.test.mjs",
+    "migrate:reef:schema-v2": "node scripts/migrate-reef-schema-v2.mjs"
   },
   "dependencies": {
     "@upstash/redis": "^1.36.2",

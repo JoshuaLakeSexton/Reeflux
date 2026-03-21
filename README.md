@@ -38,3 +38,16 @@ Reeflux is a static-first Netlify site with serverless functions for checkout, p
 - `/.netlify/functions/ping`: activity heartbeat/event ingestion
 - `/.netlify/functions/stats`: live Reef Status aggregation
 - `/.netlify/functions/activity-feed`: recent activity feed for Tide Deck
+
+## Telemetry schema migration
+
+- Dry run:
+  ```bash
+  REEF_MIGRATION_DRY_RUN=true npm run migrate:reef:schema-v2
+  ```
+- Apply:
+  ```bash
+  npm run migrate:reef:schema-v2
+  ```
+
+Detailed rollout steps are documented in `docs/reeflux-telemetry-rollout.md`.
