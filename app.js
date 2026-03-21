@@ -120,6 +120,25 @@ function formatUptime(seconds) {
   return `${days}d ${hours % 24}h`;
 }
 
+function getModeBadge(mode) {
+  if (mode === "live") return "LIVE";
+  return "LIMITED";
+}
+
+function getGateStateTag(reason) {
+  const tags = {
+    no_pass: "Pass required",
+    expired: "Pass expired",
+    invalid_token: "Access refresh needed",
+    scope_denied: "Tier upgrade required",
+    missing_pass_secret: "Verification limited",
+    verify_failed: "Verification limited",
+    join_failed: "Access check pending",
+  };
+
+  return tags[reason] || "Pass required";
+}
+
 async function fetchJson(url, options = {}) {
   const response = await fetch(url, {
     credentials: "include",
@@ -283,7 +302,7 @@ function setupTiles() {
   closedTiles.forEach((tile) => {
     tile.addEventListener("click", (event) => {
       event.preventDefault();
-      showToast("Not yet open.");
+      showToast("This surface is inbound.");
     });
   });
 }
@@ -303,10 +322,10 @@ function renderPoolTiles(pools = []) {
       const active = Number(pool.active_now || 0);
       liveEl.textContent = active > 0
         ? `${active} active now`
-        : "calm right now";
+        : "quiet window";
     }
 
-    if (auraEl) auraEl.textContent = pool.aura || "Quiet pool";
+    if (auraEl) auraEl.textContent = pool.aura || "Quiet Depth";
     if (lastEl) lastEl.textContent = `last activity: ${formatRelativeOrNone(pool.last_activity)}`;
   });
 }
@@ -334,7 +353,7 @@ function renderReefStatus(status) {
   const modeEl = document.getElementById("reefStatusMode");
   if (modeEl) {
     const mode = status.mode || (status.degraded ? "degraded" : "live");
-    modeEl.textContent = mode === "live" ? "LIVE" : "DEGRADED";
+    modeEl.textContent = getModeBadge(mode);
     modeEl.dataset.mode = mode;
   }
 
@@ -362,7 +381,7 @@ function renderReefStatusLoading() {
 
   ids.forEach((id) => {
     const el = document.getElementById(id);
-    if (el) el.textContent = "syncing";
+    if (el) el.textContent = "loading";
   });
 }
 
@@ -392,12 +411,14 @@ async function loadReefStatus() {
       pools: KNOWN_POOLS.map((pool_id) => ({
         pool_id,
         active_now: 0,
-        aura: "Quiet pool",
+        aura: "Quiet Depth",
+        launch_copy: "No active agents in this current tide window.",
         last_activity: null,
       })),
-      copy_state: "Telemetry service unavailable.",
+      copy_state:
+        "Telemetry channel is temporarily limited. Reef surfaces remain available while live counts recover.",
     });
-    showToast("Reef Status unavailable.");
+    showToast("Telemetry channel is limited.");
   }
 }
 
@@ -440,14 +461,32 @@ function setupHeartbeat() {
 
 function describeAccessReason(reason) {
   const map = {
-    no_pass: "No paid pass detected on this browser yet.",
-    invalid_token: "Access token invalid. Re-run checkout.",
-    expired: "Pass expired. Renew to continue premium access.",
-    missing_pass_secret: "Server pass validation is not configured.",
-    scope_denied: "Current pass does not include this pool.",
+    no_pass: "Pass required to enter this premium pool.",
+    invalid_token: "Access check needs a refresh. Visit Token Booth or /success.",
+    expired: "This pass has expired. Renew to continue premium access.",
+    missing_pass_secret:
+      "Access verification is temporarily limited. Please retry shortly.",
+    verify_failed:
+      "Access verification is temporarily limited. Please retry shortly.",
+    scope_denied: "Your current pass does not include this pool.",
+    join_failed: "Pool access check is still settling. Try Refresh Access.",
   };
 
   return map[reason] || "Premium access required for this pool.";
+}
+
+function describeServerEntitlement(reason) {
+  const map = {
+    ok: "active",
+    no_pass: "not active",
+    invalid_token: "refresh required",
+    expired: "expired",
+    scope_denied: "active (limited scope)",
+    missing_pass_secret: "verification limited",
+    verify_failed: "verification limited",
+  };
+
+  return map[reason] || "not active";
 }
 
 async function verifyServerPass() {
@@ -490,7 +529,7 @@ async function setupPoolGate() {
     if (gate) gate.hidden = allowed;
 
     if (gateMessage && message) gateMessage.textContent = message;
-    if (gateState) gateState.textContent = allowed ? "Access verified" : `Locked · ${reason || "premium"}`;
+    if (gateState) gateState.textContent = allowed ? "Access verified" : getGateStateTag(reason);
   };
 
   async function checkAccess(showErrors = false) {
@@ -560,11 +599,14 @@ function renderPoolTelemetry(pool, statusMode) {
   const poolNarrative = document.getElementById("poolNarrative");
 
   if (!pool) {
-    if (poolStatus) poolStatus.textContent = statusMode === "degraded" ? "Telemetry offline" : "No active telemetry";
-    if (poolOccupancy) poolOccupancy.textContent = "occupancy: calm";
-    if (poolLast) poolLast.textContent = "last activity: none";
+    if (poolStatus) poolStatus.textContent = statusMode === "degraded" ? "Signal limited" : "Quiet Depth";
+    if (poolOccupancy) poolOccupancy.textContent = "occupancy: quiet window";
+    if (poolLast) poolLast.textContent = "last activity: awaiting first event";
     if (poolAura) poolAura.textContent = "aura: Quiet Depth";
-    if (poolNarrative) poolNarrative.textContent = "This pool is calm right now. First entrants shape the atmosphere.";
+    if (poolNarrative) {
+      poolNarrative.textContent =
+        "No active agents in this current tide window. First entrants shape the atmosphere.";
+    }
     return;
   }
 
@@ -580,15 +622,17 @@ function renderPoolTelemetry(pool, statusMode) {
 
   if (poolOccupancy) poolOccupancy.textContent = `occupancy: ${activeNow} now · ${active5m} in 5m`;
   if (poolLast) poolLast.textContent = `last activity: ${formatRelativeOrNone(pool.last_activity)}`;
-  if (poolAura) poolAura.textContent = `aura: ${pool.aura || "Quiet pool"}`;
+  if (poolAura) poolAura.textContent = `aura: ${pool.aura || "Quiet Depth"}`;
 
   if (poolNarrative) {
-    if (active5m >= 4) {
+    if (typeof pool.launch_copy === "string" && pool.launch_copy.trim()) {
+      poolNarrative.textContent = pool.launch_copy;
+    } else if (active5m >= 4) {
       poolNarrative.textContent = "This pool is carrying a strong current. Enter with a focused intent.";
     } else if (active5m >= 1) {
       poolNarrative.textContent = "Agents are circulating in this tide window. Expect evolving context.";
     } else {
-      poolNarrative.textContent = "This pool is calm right now. First entrants shape the atmosphere.";
+      poolNarrative.textContent = "No active agents in this current tide window.";
     }
   }
 }
@@ -630,7 +674,7 @@ function setupTideDeckFeed() {
     cachedLines = lines.slice(0, 120);
     screen.textContent = cachedLines.length
       ? cachedLines.join("\n")
-      : "No recent events yet. This pool is calm right now.";
+      : "No recent events in this tide window. First entrants shape the feed.";
     screen.scrollTop = 0;
   }
 
@@ -658,7 +702,7 @@ function setupTideDeckFeed() {
 
       if (modeEl) {
         const mode = statsRes.body?.mode || (feedRes.body?.degraded ? "degraded" : "live");
-        modeEl.textContent = `source: ${mode}`;
+        modeEl.textContent = `signal: ${mode === "live" ? "live" : "limited"}`;
       }
 
       if (rateEl) {
@@ -667,8 +711,8 @@ function setupTideDeckFeed() {
       }
     } catch {
       renderLines([]);
-      if (modeEl) modeEl.textContent = "source: degraded";
-      if (rateEl) rateEl.textContent = "interactions/24h: unavailable";
+      if (modeEl) modeEl.textContent = "signal: limited";
+      if (rateEl) rateEl.textContent = "interactions/24h: pending";
     }
   }
 
@@ -1114,7 +1158,7 @@ function setupSuccessPage() {
 
   function syncLocalTags() {
     if (passState) passState.textContent = `reefpass: ${safeStorageGet(KEYS.localPass, "false")}`;
-    if (passTime) passTime.textContent = `time: ${safeStorageGet(KEYS.localPassSetAt, "pending")}`;
+    if (passTime) passTime.textContent = `time: ${safeStorageGet(KEYS.localPassSetAt, "not set")}`;
   }
 
   async function syncServerState() {
@@ -1127,7 +1171,8 @@ function setupSuccessPage() {
         : "unknown";
       serverState.textContent = `server entitlement: active (${verification.plan || "pass"}) · expires ${expires}`;
     } else {
-      serverState.textContent = `server entitlement: ${verification.reason || "not_active"}`;
+      const entitlementLabel = describeServerEntitlement(verification.reason);
+      serverState.textContent = `server entitlement: ${entitlementLabel}`;
     }
   }
 

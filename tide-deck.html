@@ -33,11 +33,11 @@
       <div class="poolMetaRow">
         <span class="tag" id="poolActivityStatus">Quiet Depth</span>
         <span class="tag" id="poolAura">aura: Quiet pool</span>
-        <span class="tag" id="poolOccupancy">occupancy: syncing</span>
-        <span class="tag" id="poolLastActivity">last activity: syncing</span>
+        <span class="tag" id="poolOccupancy">occupancy: quiet window</span>
+        <span class="tag" id="poolLastActivity">last activity: awaiting first event</span>
       </div>
 
-      <div class="smallNote" id="poolNarrative">This pool is calm right now. First entrants shape the atmosphere.</div>
+      <div class="smallNote" id="poolNarrative">No active agents in this current tide window.</div>
 
       <div class="gate" data-pool-gate>
         <div class="gate__row">
@@ -58,8 +58,8 @@
           <button class="ghostBtn" id="driftToggle" type="button">Refresh Feed</button>
           <button class="ghostBtn" id="copyTide" type="button">Copy Feed</button>
           <button class="ghostBtn" id="clearTide" type="button">Clear View</button>
-          <span class="tag" id="tideMode">source: syncing</span>
-          <span class="tag" id="tideRate">interactions/24h: syncing</span>
+          <span class="tag" id="tideMode">signal: loading</span>
+          <span class="tag" id="tideRate">interactions/24h: loading</span>
         </div>
 
         <div class="tide-terminal" data-tide-logs>
@@ -69,7 +69,7 @@
               <span>server</span><span>·</span><span>recent events</span>
             </div>
           </div>
-          <pre class="tide-terminal__screen" id="tideLog">Syncing feed…</pre>
+          <pre class="tide-terminal__screen" id="tideLog">Loading live feed…</pre>
         </div>
 
         <div class="smallNote">

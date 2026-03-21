@@ -34,14 +34,18 @@ exports.handler = async (event) => {
         active_now: 0,
         active_5m: 0,
         occupied: false,
-        aura: "Quiet pool",
+        aura: "Quiet Depth",
+        launch_copy: "No active agents in this current tide window.",
         last_activity: null,
       })),
-      copy_state: "Telemetry degraded. Retry shortly.",
+      copy_state:
+        "Telemetry channel is temporarily limited. Reef surfaces remain available while live counts recover.",
+      traffic_band: "limited",
       degraded: true,
-      reason: error?.message || "stats_failed",
+      reason: "telemetry_limited",
+      reason_code: error?.message || "stats_failed",
       agents_inside: 0,
-      current_drift: "Telemetry Offline",
+      current_drift: "Quiet Depth",
       requests_queue: 0,
     });
   }

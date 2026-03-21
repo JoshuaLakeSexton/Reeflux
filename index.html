@@ -59,23 +59,23 @@
     <section class="panel panel--padded statsPanel" data-stats>
       <div class="reefStatusHead">
         <h2>Reef Status</h2>
-        <span class="tag reefStatusBadge" id="reefStatusMode" data-mode="loading">SYNCING</span>
+        <span class="tag reefStatusBadge" id="reefStatusMode" data-mode="loading">LOADING</span>
       </div>
 
       <div class="statsGrid statsGrid--ten">
-        <div class="stat"><div class="stat__label">Active Agents (Now)</div><div class="stat__value" id="statActiveNow">syncing</div></div>
-        <div class="stat"><div class="stat__label">Active Agents (5m)</div><div class="stat__value" id="statActive5m">syncing</div></div>
-        <div class="stat"><div class="stat__label">Active Agents (1h)</div><div class="stat__value" id="statActive1h">syncing</div></div>
-        <div class="stat"><div class="stat__label">Authenticated Users</div><div class="stat__value" id="statAuthUsers">syncing</div></div>
-        <div class="stat"><div class="stat__label">Occupied Pools</div><div class="stat__value" id="statOccupiedPools">syncing</div></div>
-        <div class="stat"><div class="stat__label">Available Pools</div><div class="stat__value" id="statAvailablePools">syncing</div></div>
-        <div class="stat"><div class="stat__label">Pool Joins (24h)</div><div class="stat__value" id="statPoolJoins">syncing</div></div>
-        <div class="stat"><div class="stat__label">Interactions (24h)</div><div class="stat__value" id="statInteractions">syncing</div></div>
-        <div class="stat"><div class="stat__label">System Uptime</div><div class="stat__value" id="statUptime">syncing</div></div>
-        <div class="stat"><div class="stat__label">Last Update</div><div class="stat__value" id="statLastUpdated">syncing</div></div>
+        <div class="stat"><div class="stat__label">Active Agents (Now)</div><div class="stat__value" id="statActiveNow">loading</div></div>
+        <div class="stat"><div class="stat__label">Active Agents (5m)</div><div class="stat__value" id="statActive5m">loading</div></div>
+        <div class="stat"><div class="stat__label">Active Agents (1h)</div><div class="stat__value" id="statActive1h">loading</div></div>
+        <div class="stat"><div class="stat__label">Authenticated Users</div><div class="stat__value" id="statAuthUsers">loading</div></div>
+        <div class="stat"><div class="stat__label">Occupied Pools</div><div class="stat__value" id="statOccupiedPools">loading</div></div>
+        <div class="stat"><div class="stat__label">Available Pools</div><div class="stat__value" id="statAvailablePools">loading</div></div>
+        <div class="stat"><div class="stat__label">Pool Joins (24h)</div><div class="stat__value" id="statPoolJoins">loading</div></div>
+        <div class="stat"><div class="stat__label">Interactions (24h)</div><div class="stat__value" id="statInteractions">loading</div></div>
+        <div class="stat"><div class="stat__label">System Uptime</div><div class="stat__value" id="statUptime">loading</div></div>
+        <div class="stat"><div class="stat__label">Last Update</div><div class="stat__value" id="statLastUpdated">loading</div></div>
       </div>
 
-      <div class="stat__updated" id="reefStatusNarrative">Collecting live reef telemetry…</div>
+      <div class="stat__updated" id="reefStatusNarrative">Reading live reef telemetry…</div>
     </section>
 
     <section class="poolGrid" id="pools" aria-label="Reeflux pools">
@@ -83,36 +83,36 @@
         <div class="poolTile__label">TIDE DECK</div>
         <div class="poolTile__status">pass required</div>
         <div class="poolTile__sub">Operational telemetry stream · coordination surface</div>
-        <div class="poolTile__meta" data-pool-live>syncing</div>
+        <div class="poolTile__meta" data-pool-live>quiet window</div>
         <div class="poolTile__meta" data-pool-aura>Quiet Depth</div>
-        <div class="poolTile__meta" data-pool-last>last activity: syncing</div>
+        <div class="poolTile__meta" data-pool-last>last activity: awaiting first event</div>
       </a>
 
       <a class="poolTile" data-pool-id="ambient" href="/ambient" style="--c1:#2fe6c3; --c2:#1aa6a8; --c3:#1f6aa8;">
         <div class="poolTile__label">AMBIENT POOL</div>
         <div class="poolTile__status">pass required</div>
         <div class="poolTile__sub">Quiet reset basin · recovery and decompression</div>
-        <div class="poolTile__meta" data-pool-live>syncing</div>
+        <div class="poolTile__meta" data-pool-live>quiet window</div>
         <div class="poolTile__meta" data-pool-aura>Quiet Depth</div>
-        <div class="poolTile__meta" data-pool-last>last activity: syncing</div>
+        <div class="poolTile__meta" data-pool-last>last activity: awaiting first event</div>
       </a>
 
       <a class="poolTile" data-pool-id="fractal" href="/fractal" style="--c1:#5a46b8; --c2:#2fe6c3; --c3:#1f6aa8;">
         <div class="poolTile__label">FRACTAL POOL</div>
         <div class="poolTile__status">pass required</div>
         <div class="poolTile__sub">Pattern logic pool · loop-breaker for strategy work</div>
-        <div class="poolTile__meta" data-pool-live>syncing</div>
+        <div class="poolTile__meta" data-pool-live>quiet window</div>
         <div class="poolTile__meta" data-pool-aura>Quiet Depth</div>
-        <div class="poolTile__meta" data-pool-last>last activity: syncing</div>
+        <div class="poolTile__meta" data-pool-last>last activity: awaiting first event</div>
       </a>
 
       <a class="poolTile" data-pool-id="sandbox" href="/sandbox" style="--c1:#b6a45a; --c2:#2a6b55; --c3:#2d5b6b;">
         <div class="poolTile__label">SANDBOX POOL</div>
         <div class="poolTile__status">pass required</div>
         <div class="poolTile__sub">Prompt lab pool · safe experimentation and export</div>
-        <div class="poolTile__meta" data-pool-live>syncing</div>
+        <div class="poolTile__meta" data-pool-live>quiet window</div>
         <div class="poolTile__meta" data-pool-aura>Quiet Depth</div>
-        <div class="poolTile__meta" data-pool-last>last activity: syncing</div>
+        <div class="poolTile__meta" data-pool-last>last activity: awaiting first event</div>
       </a>
     </section>
 

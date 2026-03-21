@@ -14,7 +14,8 @@ exports.handler = async (event) => {
     return json(200, {
       ok: true,
       degraded: true,
-      reason: "telemetry_not_configured",
+      reason: "telemetry_limited",
+      reason_code: "telemetry_not_configured",
       events: [],
     });
   }
@@ -46,7 +47,8 @@ exports.handler = async (event) => {
     return json(200, {
       ok: true,
       degraded: true,
-      reason: error?.message || "feed_failed",
+      reason: "telemetry_limited",
+      reason_code: error?.message || "feed_failed",
       events: [],
       generated_at: new Date().toISOString(),
     });

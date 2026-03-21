@@ -11,6 +11,49 @@ const WINDOWS = Object.freeze({
   pruneSessionsMs: 2 * 60 * 60 * 1000,
 });
 
+function getPoolAura(active5m) {
+  const value = Number(active5m || 0);
+  if (value >= 8) return "High Signal";
+  if (value >= 4) return "Crowded Current";
+  if (value >= 2) return "Low Noise";
+  if (value >= 1) return "Rare Tide";
+  return "Quiet Depth";
+}
+
+function getPoolLaunchCopy(active5m) {
+  const value = Number(active5m || 0);
+  if (value >= 6) return "Strong current moving through this pool right now.";
+  if (value >= 3) return "Active tide window. Entrants are shaping the pool in real time.";
+  if (value >= 1) return "A small current is present. Early entrants define the tone.";
+  return "No active agents in this current tide window.";
+}
+
+function getTrafficBand(activeAgents5m, occupiedPools) {
+  const active = Number(activeAgents5m || 0);
+  const occupied = Number(occupiedPools || 0);
+
+  if (active >= 8 || occupied >= 3) return "high";
+  if (active >= 3 || occupied >= 2) return "moderate";
+  if (active >= 1 || occupied >= 1) return "low";
+  return "calm";
+}
+
+function getReefCopyByTrafficBand(trafficBand) {
+  if (trafficBand === "high") {
+    return "Strong reef current detected. Multiple pools are actively occupied.";
+  }
+
+  if (trafficBand === "moderate") {
+    return "Steady reef activity is present across current tide windows.";
+  }
+
+  if (trafficBand === "low") {
+    return "Early current detected. Activity is present and still forming.";
+  }
+
+  return "Calm tide window. No active agents in the last 5 minutes.";
+}
+
 function json(statusCode, data, extraHeaders = {}) {
   return {
     statusCode,
@@ -243,6 +286,11 @@ async function recordActivity(redis, activity) {
     await redis.set("reef:service:first_seen_at", String(now));
   }
 
+  const schemaVersion = await redis.get("reef:schema:version");
+  if (!schemaVersion) {
+    await redis.set("reef:schema:version", "2");
+  }
+
   return {
     recorded: true,
     at: now,
@@ -259,11 +307,8 @@ async function getPoolSnapshot(redis, poolId, now = Date.now()) {
   const lastActivityRaw = await redis.hget("reef:pools:last_activity", normalized);
   const lastActivity = lastActivityRaw ? new Date(Number(lastActivityRaw)).toISOString() : null;
 
-  let activityLabel = "Quiet pool";
-  if (active5m >= 8) activityLabel = "High Signal";
-  else if (active5m >= 4) activityLabel = "Crowded Current";
-  else if (active5m >= 2) activityLabel = "Low Noise";
-  else if (active5m >= 1) activityLabel = "Rare Tide";
+  const activityLabel = getPoolAura(active5m);
+  const launchCopy = getPoolLaunchCopy(active5m);
 
   return {
     pool_id: normalized,
@@ -271,6 +316,7 @@ async function getPoolSnapshot(redis, poolId, now = Date.now()) {
     active_5m: Number(active5m || 0),
     last_activity: lastActivity,
     aura: activityLabel,
+    launch_copy: launchCopy,
     occupied: Number(active5m || 0) > 0,
   };
 }
@@ -298,16 +344,20 @@ async function getReefStatus(redis) {
         active_now: 0,
         active_5m: 0,
         occupied: false,
-        aura: "Quiet pool",
+        aura: "Quiet Depth",
+        launch_copy: "No active agents in this current tide window.",
         last_activity: null,
       })),
-      copy_state: "Telemetry unavailable. Configure Upstash for live reef status.",
+      copy_state:
+        "Telemetry channel is temporarily limited. Reef surfaces remain available while live counts recover.",
+      traffic_band: "limited",
       // Backward-compatible keys
       agents_inside: 0,
-      current_drift: "Telemetry Offline",
+      current_drift: "Quiet Depth",
       requests_queue: 0,
       degraded: true,
-      reason: "UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN missing",
+      reason: "telemetry_limited",
+      reason_code: "telemetry_limited",
     };
   }
 
@@ -359,6 +409,7 @@ async function getReefStatus(redis) {
   const systemUptimeSeconds = Math.max(0, Math.floor((now - firstSeen) / 1000));
 
   const lastUpdated = new Date(now).toISOString();
+  const trafficBand = getTrafficBand(activeAgents5m, occupiedPools);
 
   return {
     mode: "live",
@@ -375,13 +426,11 @@ async function getReefStatus(redis) {
     system_uptime_seconds: systemUptimeSeconds,
     last_updated: lastUpdated,
     pools,
-    copy_state:
-      occupiedPools > 0
-        ? "Reef activity detected in the current tide window."
-        : "This reef is calm right now. First entrants shape the atmosphere.",
+    traffic_band: trafficBand,
+    copy_state: getReefCopyByTrafficBand(trafficBand),
     // Backward-compatible keys
     agents_inside: Number(activeAgentsNow || 0),
-    current_drift: occupiedPools > 0 ? "High Signal" : "Quiet Depth",
+    current_drift: getPoolAura(activeAgents5m),
     requests_queue: 0,
     degraded: false,
   };
