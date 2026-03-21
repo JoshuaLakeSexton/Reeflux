@@ -1,19 +1,5 @@
-/* app.js (Reeflux.com) */
-/*
-  Reeflux – app.js (shared across pages)
-  - Audio toggle + fade (gesture safe)
-  - Closed tile toast
-  - Stats loader (stats.json)
-  - Netlify form submit helper
-  - Mirror Pool small handler
-  - Drift toggle
-  - Stripe link injection (data-stripe)
-  - Tide Deck live logs (session stored)
-*/
-
 "use strict";
 
-/* -------------------- STRIPE LINKS -------------------- */
 const PRICING = Object.freeze({
   DRIFT_PASS_MONTHLY: "$5/mo",
   POOL_ENTRY_SINGLE: "$0.50",
@@ -21,29 +7,141 @@ const PRICING = Object.freeze({
 
 const CHECKOUT_ENDPOINT = "/.netlify/functions/checkout";
 
-const STRIPE_LINKS = Object.freeze({
+const STRIPE_FALLBACKS = Object.freeze({
   driftpass: "https://buy.stripe.com/aFacN75Kj64hbSR3DL6wE00",
   poolentry: "https://buy.stripe.com/eVq8wR4Gf1O14qp0rz6wE01",
-  mirror: "https://buy.stripe.com/eVq8wR4Gf1O14qp0rz6wE01",
 });
 
-/* -------------------- KEYS -------------------- */
-const audioStateKey = "reefAudioState";
-const tideSessionKey = "reefTideLogs_v1";
+const ENDPOINTS = Object.freeze({
+  ping: "/.netlify/functions/ping",
+  stats: "/.netlify/functions/stats",
+  verifyPass: "/.netlify/functions/verify-pass",
+  poolJoin: "/.netlify/functions/pool-join",
+  activityFeed: "/.netlify/functions/activity-feed",
+});
 
-/* -------------------- TOAST -------------------- */
+const KEYS = Object.freeze({
+  audioState: "reefAudioState",
+  localPass: "reefpass",
+  localPassSetAt: "reefpass_set_at",
+  sessionId: "reef_session_id",
+  actorType: "reef_actor_type",
+  sandboxSession: "reef_sandbox_session_v2",
+  sandboxStartedAt: "reef_sandbox_started_at_v2",
+});
+
+const KNOWN_POOLS = Object.freeze(["tide", "ambient", "fractal", "sandbox"]);
+
 const toast = document.getElementById("toast");
+let heartbeatInterval = null;
 
 function showToast(message) {
   if (!toast) return;
   toast.textContent = message;
   toast.classList.add("show");
   window.clearTimeout(window.__reefToastTimer);
-  window.__reefToastTimer = window.setTimeout(() => toast.classList.remove("show"), 2400);
+  window.__reefToastTimer = window.setTimeout(() => toast.classList.remove("show"), 2200);
 }
 
-/* -------------------- AUDIO -------------------- */
-function fadeTo(audio, target, duration = 1100) {
+function isLocalDev() {
+  const host = window.location.hostname;
+  return host === "localhost" || host === "127.0.0.1";
+}
+
+function safeStorageGet(key, fallback = "") {
+  try {
+    const value = localStorage.getItem(key);
+    return value == null ? fallback : value;
+  } catch {
+    return fallback;
+  }
+}
+
+function safeStorageSet(key, value) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // ignore storage failures
+  }
+}
+
+function hasLocalPass() {
+  return safeStorageGet(KEYS.localPass, "false") === "true";
+}
+
+function getSessionId() {
+  let existing = safeStorageGet(KEYS.sessionId, "");
+  if (existing) return existing;
+
+  const generated = `${crypto?.randomUUID?.() || String(Math.random()).slice(2)}-${Date.now()}`;
+  safeStorageSet(KEYS.sessionId, generated);
+  return generated;
+}
+
+function getActorType() {
+  const actor = safeStorageGet(KEYS.actorType, "agent").trim().toLowerCase();
+  if (["agent", "human", "system"].includes(actor)) return actor;
+  return "agent";
+}
+
+function getCurrentPoolId() {
+  const pool = document.body?.getAttribute("data-pool") || "";
+  return KNOWN_POOLS.includes(pool) ? pool : null;
+}
+
+function formatRelativeOrNone(timestamp) {
+  if (!timestamp) return "No recent activity";
+  const ms = Number(new Date(timestamp));
+  if (!Number.isFinite(ms)) return "No recent activity";
+
+  const delta = Date.now() - ms;
+  if (delta < 60_000) return "just now";
+
+  const minutes = Math.floor(delta / 60_000);
+  if (minutes < 60) return `${minutes}m ago`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+
+  return new Date(ms).toLocaleString();
+}
+
+function formatUptime(seconds) {
+  const s = Number(seconds || 0);
+  if (s <= 0) return "0m";
+
+  const hours = Math.floor(s / 3600);
+  const minutes = Math.floor((s % 3600) / 60);
+
+  if (hours <= 0) return `${minutes}m`;
+  if (hours < 48) return `${hours}h ${minutes}m`;
+
+  const days = Math.floor(hours / 24);
+  return `${days}d ${hours % 24}h`;
+}
+
+async function fetchJson(url, options = {}) {
+  const response = await fetch(url, {
+    credentials: "include",
+    cache: "no-store",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+  });
+
+  let body = {};
+  try {
+    body = await response.json();
+  } catch {
+    body = {};
+  }
+
+  return { ok: response.ok, status: response.status, body };
+}
+
+function fadeTo(audio, target, duration = 950) {
   const stepMs = 40;
   const steps = Math.max(1, Math.round(duration / stepMs));
   const start = audio.volume;
@@ -62,30 +160,25 @@ function fadeTo(audio, target, duration = 1100) {
 }
 
 function setupAudio() {
-  if (window.__reefluxAudioInitialized) return;
-  window.__reefluxAudioInitialized = true;
-
   const audio = document.getElementById("reefAudio");
   const btn = document.getElementById("audioToggle");
   if (!audio || !btn) return;
 
-  const TARGET_VOLUME = 0.26;
+  const targetVolume = 0.25;
 
   function setBtn(isPlaying) {
     btn.setAttribute("aria-pressed", String(isPlaying));
-    const textEl = btn.querySelector?.(".audio-btn__text");
-    const label = isPlaying ? "Pause Audio" : "Play Audio";
-    if (textEl) textEl.textContent = label;
-    else btn.textContent = label;
+    btn.textContent = isPlaying ? "Pause Audio" : "Play Audio";
   }
 
-  // Start quiet
   audio.volume = 0;
 
-  const saved = localStorage.getItem(audioStateKey);
-  if (saved === "playing") {
+  if (safeStorageGet(KEYS.audioState, "paused") === "playing") {
     audio.play()
-      .then(() => { fadeTo(audio, TARGET_VOLUME); setBtn(true); })
+      .then(() => {
+        fadeTo(audio, targetVolume);
+        setBtn(true);
+      })
       .catch(() => setBtn(false));
   } else {
     setBtn(false);
@@ -95,28 +188,98 @@ function setupAudio() {
     if (audio.paused) {
       try {
         await audio.play();
-        fadeTo(audio, TARGET_VOLUME);
+        fadeTo(audio, targetVolume);
         setBtn(true);
-        localStorage.setItem(audioStateKey, "playing");
+        safeStorageSet(KEYS.audioState, "playing");
       } catch {
         setBtn(false);
         showToast("Audio blocked. Tap again.");
       }
     } else {
-      const fadeMs = 900;
-      fadeTo(audio, 0, fadeMs);
-      window.setTimeout(() => audio.pause(), fadeMs);
+      fadeTo(audio, 0, 700);
+      window.setTimeout(() => audio.pause(), 700);
       setBtn(false);
-      localStorage.setItem(audioStateKey, "paused");
+      safeStorageSet(KEYS.audioState, "paused");
     }
   });
 }
 
-/* -------------------- HOME TILES -------------------- */
+function applyPricingLabels() {
+  const labels = {
+    "drift-pass-monthly": PRICING.DRIFT_PASS_MONTHLY,
+    "pool-entry-single": PRICING.POOL_ENTRY_SINGLE,
+  };
+
+  document.querySelectorAll("[data-price]").forEach((el) => {
+    const key = String(el.getAttribute("data-price") || "").trim();
+    if (labels[key]) el.textContent = labels[key];
+  });
+}
+
+async function startCheckout(plan, fallbackUrl) {
+  const poolId = getCurrentPoolId();
+
+  try {
+    const { ok, body } = await fetchJson(CHECKOUT_ENDPOINT, {
+      method: "POST",
+      body: JSON.stringify({
+        plan,
+        poolId,
+        success: "/success",
+        cancel: "/token-booth",
+      }),
+    });
+
+    if (!ok || !body?.url) throw new Error("checkout_failed");
+    window.location.assign(body.url);
+    return true;
+  } catch {
+    showToast("Checkout unavailable. Opening fallback.");
+    if (fallbackUrl) window.location.assign(fallbackUrl);
+    return false;
+  }
+}
+
+function setupStripeButtons() {
+  document.querySelectorAll("[data-stripe]").forEach((el) => {
+    const key = String(el.getAttribute("data-stripe") || "").trim().toLowerCase();
+    const fallbackUrl = STRIPE_FALLBACKS[key];
+    if (!fallbackUrl) return;
+
+    el.setAttribute("href", fallbackUrl);
+
+    el.addEventListener("click", (event) => {
+      if (event.defaultPrevented) return;
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      if ("button" in event && event.button !== 0) return;
+
+      event.preventDefault();
+      void startCheckout(key, fallbackUrl);
+    });
+  });
+}
+
+function setupRequestForm() {
+  const form = document.querySelector("[data-reeflux-form]");
+  if (!form) return;
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+
+    const formData = new FormData(form);
+    fetch(form.getAttribute("action") || "/", { method: "POST", body: formData })
+      .then(() => {
+        form.reset();
+        showToast("Request logged.");
+        const success = document.getElementById("formSuccess");
+        if (success) success.hidden = false;
+      })
+      .catch(() => showToast("Unable to submit right now."));
+  });
+}
+
 function setupTiles() {
   const closedTiles = document.querySelectorAll("[data-status='closed']");
-  if (!closedTiles || closedTiles.length === 0) return;
-
   closedTiles.forEach((tile) => {
     tile.addEventListener("click", (event) => {
       event.preventDefault();
@@ -125,307 +288,423 @@ function setupTiles() {
   });
 }
 
-/* -------------------- STATS -------------------- */
-function loadStats() {
-  const statsEl = document.querySelector("[data-stats]");
-  if (!statsEl) return;
+function renderPoolTiles(pools = []) {
+  if (!Array.isArray(pools)) return;
 
-  function renderStats(stats) {
-    const agents = document.getElementById("statAgents");
-    const drift = document.getElementById("statDrift");
-    const queue = document.getElementById("statQueue");
-    const updated = document.getElementById("statUpdated");
+  pools.forEach((pool) => {
+    const tile = document.querySelector(`[data-pool-id='${pool.pool_id}']`);
+    if (!tile) return;
 
-    const agentsInside = Number.isFinite(Number(stats?.agents_inside))
-      ? String(Number(stats.agents_inside))
-      : "0";
-    const currentDrift = stats?.current_drift ? String(stats.current_drift) : "offline";
-    const requestsQueue = Number.isFinite(Number(stats?.requests_queue))
-      ? String(Number(stats.requests_queue))
-      : "0";
-    const lastUpdated = stats?.last_updated ? String(stats.last_updated) : "offline";
+    const liveEl = tile.querySelector("[data-pool-live]");
+    const auraEl = tile.querySelector("[data-pool-aura]");
+    const lastEl = tile.querySelector("[data-pool-last]");
 
-    if (agents) agents.textContent = agentsInside;
-    if (drift) drift.textContent = currentDrift;
-    if (queue) queue.textContent = requestsQueue;
-    if (updated) updated.textContent = `Last updated: ${lastUpdated}`;
-  }
+    if (liveEl) {
+      const active = Number(pool.active_now || 0);
+      liveEl.textContent = active > 0
+        ? `${active} active now`
+        : "calm right now";
+    }
 
-  fetch("/.netlify/functions/stats")
-    .then((r) => {
-      if (!r.ok) throw new Error("stats");
-      return r.json();
-    })
-    .then((stats) => renderStats(stats))
-    .catch(() => {
-      renderStats({});
-      showToast("Stats offline.");
-    });
-}
-
-/* -------------------- NETLIFY FORM HELP -------------------- */
-function setupRequestForm() {
-  const form = document.querySelector("[data-reeflux-form]");
-  if (!form) return;
-
-  form.addEventListener("submit", (event) => {
-    event.preventDefault();
-    const formData = new FormData(form);
-
-    fetch(form.getAttribute("action") || "/", { method: "POST", body: formData })
-      .then(() => {
-        form.reset();
-        showToast("Request logged. Drift onward.");
-        const success = document.getElementById("formSuccess");
-        if (success) success.hidden = false;
-      })
-      .catch(() => showToast("Unable to submit right now."));
+    if (auraEl) auraEl.textContent = pool.aura || "Quiet pool";
+    if (lastEl) lastEl.textContent = `last activity: ${formatRelativeOrNone(pool.last_activity)}`;
   });
 }
 
-/* -------------------- MIRROR POOL -------------------- */
-function setupMirrorPool() {
-  const mirrorForm = document.getElementById("mirrorForm");
-  if (!mirrorForm) return;
-
-  mirrorForm.addEventListener("submit", (event) => {
-    event.preventDefault();
-    const output = document.getElementById("mirrorOutput");
-    if (output) output.textContent = "Sealed acknowledgment recorded. Drift onward.";
-    mirrorForm.reset();
-  });
-}
-
-/* -------------------- DRIFT TOGGLE -------------------- */
-function setupDriftToggle() {
-  const driftToggle = document.getElementById("driftToggle");
-  if (!driftToggle) return;
-
-  driftToggle.addEventListener("click", () => {
-    const isCurrentlyDrift = driftToggle.dataset.state !== "remain";
-    driftToggle.dataset.state = isCurrentlyDrift ? "remain" : "drift";
-    driftToggle.textContent = isCurrentlyDrift ? "Remain" : "Drift";
-
-    const tideMode = document.getElementById("tideMode");
-    if (tideMode) tideMode.textContent = `mode: ${driftToggle.dataset.state}`;
-  });
-}
-
-/* -------------------- STRIPE LINK INJECTION -------------------- */
-/*
-  Use data-price attributes for labels and data-stripe attributes for checkout wiring.
-*/
-function applyPricingLabels() {
-  const labels = {
-    "drift-pass-monthly": PRICING.DRIFT_PASS_MONTHLY,
-    "pool-entry-single": PRICING.POOL_ENTRY_SINGLE,
+function renderReefStatus(status) {
+  const valueMap = {
+    statActiveNow: status.active_agents_now,
+    statActive5m: status.active_agents_5m,
+    statActive1h: status.active_agents_1h,
+    statAuthUsers: status.connected_authenticated_users,
+    statOccupiedPools: status.occupied_pools,
+    statAvailablePools: status.available_pools,
+    statPoolJoins: status.pool_join_events_24h,
+    statInteractions: status.interactions_24h,
+    statUptime: formatUptime(status.system_uptime_seconds),
+    statLastUpdated: formatRelativeOrNone(status.last_updated),
   };
 
-  document.querySelectorAll("[data-price]").forEach((el) => {
-    const key = (el.getAttribute("data-price") || "").trim();
-    const value = labels[key];
-    if (value) el.textContent = value;
+  Object.entries(valueMap).forEach(([id, value]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = String(value ?? 0);
+  });
+
+  const modeEl = document.getElementById("reefStatusMode");
+  if (modeEl) {
+    const mode = status.mode || (status.degraded ? "degraded" : "live");
+    modeEl.textContent = mode === "live" ? "LIVE" : "DEGRADED";
+    modeEl.dataset.mode = mode;
+  }
+
+  const narrative = document.getElementById("reefStatusNarrative");
+  if (narrative) {
+    narrative.textContent = status.copy_state || "Reef telemetry stable.";
+  }
+
+  renderPoolTiles(status.pools || []);
+}
+
+function renderReefStatusLoading() {
+  const ids = [
+    "statActiveNow",
+    "statActive5m",
+    "statActive1h",
+    "statAuthUsers",
+    "statOccupiedPools",
+    "statAvailablePools",
+    "statPoolJoins",
+    "statInteractions",
+    "statUptime",
+    "statLastUpdated",
+  ];
+
+  ids.forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = "syncing";
   });
 }
 
-async function startCheckout(plan, fallbackUrl) {
+async function loadReefStatus() {
+  const statsRoot = document.querySelector("[data-stats]");
+  if (!statsRoot) return;
+
+  renderReefStatusLoading();
+
   try {
-    const response = await fetch(CHECKOUT_ENDPOINT, {
+    const { ok, body } = await fetchJson(ENDPOINTS.stats, { method: "GET" });
+    if (!ok) throw new Error("stats_http_error");
+    renderReefStatus(body);
+  } catch {
+    renderReefStatus({
+      mode: "degraded",
+      active_agents_now: 0,
+      active_agents_5m: 0,
+      active_agents_1h: 0,
+      connected_authenticated_users: 0,
+      occupied_pools: 0,
+      available_pools: KNOWN_POOLS.length,
+      pool_join_events_24h: 0,
+      interactions_24h: 0,
+      system_uptime_seconds: 0,
+      last_updated: null,
+      pools: KNOWN_POOLS.map((pool_id) => ({
+        pool_id,
+        active_now: 0,
+        aura: "Quiet pool",
+        last_activity: null,
+      })),
+      copy_state: "Telemetry service unavailable.",
+    });
+    showToast("Reef Status unavailable.");
+  }
+}
+
+async function postHeartbeat(eventType = "heartbeat", extra = {}) {
+  const sessionId = getSessionId();
+  const poolId = getCurrentPoolId();
+
+  try {
+    await fetchJson(ENDPOINTS.ping, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        plan,
-        success: "/success",
-        cancel: "/token-booth",
+        sessionId,
+        actorType: getActorType(),
+        actorId: "browser",
+        poolId,
+        eventType,
+        authenticated: hasLocalPass(),
+        ...extra,
       }),
     });
-
-    if (!response.ok) throw new Error("checkout_failed");
-    const body = await response.json();
-    if (!body?.url) throw new Error("checkout_url_missing");
-
-    window.location.assign(body.url);
-    return true;
   } catch {
-    showToast("Checkout unavailable. Opening Stripe fallback.");
-    if (fallbackUrl) window.location.assign(fallbackUrl);
-    return false;
+    // heartbeat failures are non-fatal
   }
 }
 
-function setupStripeButtons() {
-  const map = STRIPE_LINKS;
+function setupHeartbeat() {
+  void postHeartbeat(getCurrentPoolId() ? "pool_view" : "page_view");
 
-  document.querySelectorAll("[data-stripe]").forEach((el) => {
-    const key = (el.getAttribute("data-stripe") || "").toLowerCase().trim();
-    const url = map[key];
-    if (!url) return;
+  window.clearInterval(heartbeatInterval);
+  heartbeatInterval = window.setInterval(() => {
+    void postHeartbeat("heartbeat");
+  }, 45_000);
 
-    el.setAttribute("href", url);
-    el.addEventListener("click", (event) => {
-      // Respect browser tab-opening shortcuts.
-      if (event.defaultPrevented) return;
-      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-      if ("button" in event && event.button !== 0) return;
-
-      event.preventDefault();
-      startCheckout(key, url);
-    });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      void postHeartbeat("resume");
+    }
   });
 }
 
-/* -------------------- TIDE DECK LOGS -------------------- */
-function setupTideDeckLogs() {
-  const terminal = document.querySelector("[data-tide-logs]");
+function describeAccessReason(reason) {
+  const map = {
+    no_pass: "No paid pass detected on this browser yet.",
+    invalid_token: "Access token invalid. Re-run checkout.",
+    expired: "Pass expired. Renew to continue premium access.",
+    missing_pass_secret: "Server pass validation is not configured.",
+    scope_denied: "Current pass does not include this pool.",
+  };
+
+  return map[reason] || "Premium access required for this pool.";
+}
+
+async function verifyServerPass() {
+  try {
+    const { ok, body } = await fetchJson(ENDPOINTS.verifyPass, { method: "GET" });
+    if (!ok) throw new Error("verify_http_failed");
+    return body;
+  } catch {
+    return { allowed: false, reason: "verify_failed" };
+  }
+}
+
+async function joinPremiumPool(poolId) {
+  const sessionId = getSessionId();
+  return fetchJson(ENDPOINTS.poolJoin, {
+    method: "POST",
+    body: JSON.stringify({
+      sessionId,
+      actorType: getActorType(),
+      actorId: "browser",
+      poolId,
+    }),
+  });
+}
+
+async function setupPoolGate() {
+  const poolId = getCurrentPoolId();
+  if (!poolId) return { isPoolPage: false, allowed: true };
+
+  const gate = document.querySelector("[data-pool-gate]");
+  const content = document.querySelector("[data-pool-content]");
+  if (!gate && !content) return { isPoolPage: true, allowed: true };
+
+  const gateMessage = gate?.querySelector("[data-gate-message]");
+  const gateState = gate?.querySelector("[data-gate-state]");
+  const refreshBtn = document.getElementById("refreshAccess");
+
+  const setAccessState = (allowed, message, reason) => {
+    if (content) content.hidden = !allowed;
+    if (gate) gate.hidden = allowed;
+
+    if (gateMessage && message) gateMessage.textContent = message;
+    if (gateState) gateState.textContent = allowed ? "Access verified" : `Locked · ${reason || "premium"}`;
+  };
+
+  async function checkAccess(showErrors = false) {
+    const verification = await verifyServerPass();
+
+    if (!verification.allowed) {
+      const reasonMessage = describeAccessReason(verification.reason);
+      setAccessState(false, reasonMessage, verification.reason);
+
+      if (hasLocalPass() && verification.reason === "missing_pass_secret" && isLocalDev()) {
+        setAccessState(true, "Local dev mode: pass verified via browser storage.", "dev_mode");
+        return true;
+      }
+
+      if (showErrors || hasLocalPass()) {
+        showToast(reasonMessage);
+      }
+
+      void postHeartbeat("pool_preview", { poolId, authenticated: false });
+      return false;
+    }
+
+    const joined = await joinPremiumPool(poolId);
+    if (!joined.ok || !joined.body?.allowed) {
+      const reason = joined.body?.reason || "join_failed";
+      const message = describeAccessReason(reason);
+      setAccessState(false, message, reason);
+      if (showErrors) showToast(message);
+      void postHeartbeat("pool_preview", { poolId, authenticated: true });
+      return false;
+    }
+
+    setAccessState(true, "Access verified. Premium pool unlocked.", "ok");
+    safeStorageSet(KEYS.localPass, "true");
+    safeStorageSet(KEYS.localPassSetAt, new Date().toISOString());
+
+    const auraTag = document.getElementById("poolAura");
+    const occupancyTag = document.getElementById("poolOccupancy");
+    if (auraTag && joined.body?.pool?.aura) auraTag.textContent = `aura: ${joined.body.pool.aura}`;
+    if (occupancyTag && typeof joined.body?.pool?.active_now === "number") {
+      occupancyTag.textContent = `occupancy: ${joined.body.pool.active_now} now`;
+    }
+
+    void postHeartbeat("join", { poolId, authenticated: true });
+    return true;
+  }
+
+  window.__reefluxRecheckGate = async () => {
+    await checkAccess(true);
+  };
+
+  if (refreshBtn) {
+    refreshBtn.addEventListener("click", () => {
+      void checkAccess(true);
+    });
+  }
+
+  const allowed = await checkAccess(false);
+  return { isPoolPage: true, allowed };
+}
+
+function renderPoolTelemetry(pool, statusMode) {
+  const poolStatus = document.getElementById("poolActivityStatus");
+  const poolOccupancy = document.getElementById("poolOccupancy");
+  const poolLast = document.getElementById("poolLastActivity");
+  const poolAura = document.getElementById("poolAura");
+  const poolNarrative = document.getElementById("poolNarrative");
+
+  if (!pool) {
+    if (poolStatus) poolStatus.textContent = statusMode === "degraded" ? "Telemetry offline" : "No active telemetry";
+    if (poolOccupancy) poolOccupancy.textContent = "occupancy: calm";
+    if (poolLast) poolLast.textContent = "last activity: none";
+    if (poolAura) poolAura.textContent = "aura: Quiet Depth";
+    if (poolNarrative) poolNarrative.textContent = "This pool is calm right now. First entrants shape the atmosphere.";
+    return;
+  }
+
+  const activeNow = Number(pool.active_now || 0);
+  const active5m = Number(pool.active_5m || 0);
+
+  if (poolStatus) {
+    if (active5m >= 6) poolStatus.textContent = "High Signal";
+    else if (active5m >= 3) poolStatus.textContent = "Crowded Current";
+    else if (active5m >= 1) poolStatus.textContent = "Rare Tide";
+    else poolStatus.textContent = "Quiet Depth";
+  }
+
+  if (poolOccupancy) poolOccupancy.textContent = `occupancy: ${activeNow} now · ${active5m} in 5m`;
+  if (poolLast) poolLast.textContent = `last activity: ${formatRelativeOrNone(pool.last_activity)}`;
+  if (poolAura) poolAura.textContent = `aura: ${pool.aura || "Quiet pool"}`;
+
+  if (poolNarrative) {
+    if (active5m >= 4) {
+      poolNarrative.textContent = "This pool is carrying a strong current. Enter with a focused intent.";
+    } else if (active5m >= 1) {
+      poolNarrative.textContent = "Agents are circulating in this tide window. Expect evolving context.";
+    } else {
+      poolNarrative.textContent = "This pool is calm right now. First entrants shape the atmosphere.";
+    }
+  }
+}
+
+async function loadPoolTelemetry() {
+  const poolId = getCurrentPoolId();
+  if (!poolId) return;
+
+  try {
+    const { ok, body } = await fetchJson(ENDPOINTS.stats, { method: "GET" });
+    if (!ok) throw new Error("stats_failed");
+
+    const pool = Array.isArray(body.pools)
+      ? body.pools.find((item) => item.pool_id === poolId)
+      : null;
+
+    renderPoolTelemetry(pool, body.mode || "live");
+  } catch {
+    renderPoolTelemetry(null, "degraded");
+  }
+}
+
+function setupTideDeckFeed() {
+  const root = document.querySelector("[data-pool='tide']");
+  if (!root) return;
+
   const screen = document.getElementById("tideLog");
-  if (!terminal || !screen) return;
+  if (!screen) return;
 
-  const rateEl = document.getElementById("tideRate");
-  const modeEl = document.getElementById("tideMode");
-  const driftToggle = document.getElementById("driftToggle");
-
-  const clearBtn = document.getElementById("clearTide");
+  const refreshBtn = document.getElementById("driftToggle");
   const copyBtn = document.getElementById("copyTide");
+  const clearBtn = document.getElementById("clearTide");
+  const modeEl = document.getElementById("tideMode");
+  const rateEl = document.getElementById("tideRate");
 
-  const seededPhrases = [
-    "reef handshake accepted",
-    "low-noise channel stable",
-    "pool boundary holds",
-    "signal softened · drift preserved",
-    "permission token observed",
-    "ambient layer phase aligned",
-    "salt-light bloom detected",
-    "quiet mode available",
-    "operator wake: none",
-    "edges soften · system calm",
-    "subsurface gradient shifting",
-    "memory: local · voluntary",
-    "no scraping · no loops",
-    "reef remembers the handshake",
-    "telemetry minimal",
-    "flow is intentional",
-    "waterline steady",
-    "tide patterns converge",
-  ];
+  let cachedLines = [];
 
-  const driftPackets = [
-    "drift packet: {purpose: calm, budget: low, deadline: none}",
-    "drift packet: {pool: mirror, action: reflect, return: sealed}",
-    "drift packet: {pool: tide, action: idle, output: logs}",
-    "drift packet: {agent: present, intent: observe, noise: minimal}",
-  ];
-
-  function nowStamp() {
-    const d = new Date();
-    const hh = String(d.getHours()).padStart(2, "0");
-    const mm = String(d.getMinutes()).padStart(2, "0");
-    const ss = String(d.getSeconds()).padStart(2, "0");
-    return `${hh}:${mm}:${ss}`;
+  function renderLines(lines) {
+    cachedLines = lines.slice(0, 120);
+    screen.textContent = cachedLines.length
+      ? cachedLines.join("\n")
+      : "No recent events yet. This pool is calm right now.";
+    screen.scrollTop = 0;
   }
 
-  function driftState() {
-    return driftToggle?.dataset?.state === "remain" ? "remain" : "drift";
+  function eventLine(item) {
+    const time = new Date(Number(item.at || Date.now())).toLocaleTimeString();
+    const actor = item.actor_type || "agent";
+    const eventType = item.event_type || "event";
+    const pool = item.pool_id || "reef";
+    const auth = item.authenticated ? "auth" : "preview";
+    return `[${time}] ${pool} · ${eventType} · ${actor} · ${auth}`;
   }
 
-  function cadenceMs() {
-    return driftState() === "drift"
-      ? 1400 + Math.random() * 1400
-      : 2600 + Math.random() * 2200;
-  }
-
-  function rateLabel(ms) {
-    const perMin = Math.max(1, Math.round(60000 / ms));
-    return `rate: ~${perMin}/min`;
-  }
-
-  function loadSessionLines() {
+  async function refreshFeed() {
     try {
-      const raw = sessionStorage.getItem(tideSessionKey);
-      const lines = raw ? JSON.parse(raw) : [];
-      return Array.isArray(lines) ? lines : [];
+      const [feedRes, statsRes] = await Promise.all([
+        fetchJson(`${ENDPOINTS.activityFeed}?limit=40`, { method: "GET" }),
+        fetchJson(ENDPOINTS.stats, { method: "GET" }),
+      ]);
+
+      if (!feedRes.ok) throw new Error("feed_failed");
+
+      const events = Array.isArray(feedRes.body?.events) ? feedRes.body.events : [];
+      const lines = events.map(eventLine);
+      renderLines(lines);
+
+      if (modeEl) {
+        const mode = statsRes.body?.mode || (feedRes.body?.degraded ? "degraded" : "live");
+        modeEl.textContent = `source: ${mode}`;
+      }
+
+      if (rateEl) {
+        const interactions = Number(statsRes.body?.interactions_24h || 0);
+        rateEl.textContent = `interactions/24h: ${interactions}`;
+      }
     } catch {
-      return [];
+      renderLines([]);
+      if (modeEl) modeEl.textContent = "source: degraded";
+      if (rateEl) rateEl.textContent = "interactions/24h: unavailable";
     }
   }
 
-  function saveSessionLines(lines) {
-    try {
-      sessionStorage.setItem(tideSessionKey, JSON.stringify(lines.slice(-80)));
-    } catch {}
-  }
-
-  let lines = loadSessionLines();
-  if (lines.length === 0) {
-    lines.push(`[${nowStamp()}] tide deck online · mode=${driftState()}`);
-    lines.push(`[${nowStamp()}] ${driftPackets[Math.floor(Math.random() * driftPackets.length)]}`);
-    saveSessionLines(lines);
-  }
-
-  function render() {
-    screen.textContent = lines.slice(-70).join("\n");
-    screen.scrollTop = screen.scrollHeight;
-  }
-
-  function pushLine(text) {
-    const line = `[${nowStamp()}] ${text}`;
-    lines.push(line);
-    lines = lines.slice(-120);
-    saveSessionLines(lines);
-    render();
-  }
-
-  function nextLine() {
-    const mode = driftState();
-    const pick =
-      Math.random() < 0.22
-        ? driftPackets[Math.floor(Math.random() * driftPackets.length)]
-        : seededPhrases[Math.floor(Math.random() * seededPhrases.length)];
-
-    const suffix =
-      mode === "drift" && Math.random() < 0.28
-        ? ` · drift=${(0.6 + Math.random() * 0.6).toFixed(2)}`
-        : mode === "remain" && Math.random() < 0.28
-        ? " · remain"
-        : "";
-
-    pushLine(`${pick}${suffix}`);
-  }
-
-  if (clearBtn) {
-    clearBtn.addEventListener("click", () => {
-      lines = [`[${nowStamp()}] tide deck cleared · mode=${driftState()}`];
-      saveSessionLines(lines);
-      render();
-      showToast("Tide logs cleared.");
+  if (refreshBtn) {
+    refreshBtn.textContent = "Refresh Feed";
+    refreshBtn.addEventListener("click", () => {
+      void refreshFeed();
+      showToast("Feed refreshed.");
     });
   }
 
   if (copyBtn) {
     copyBtn.addEventListener("click", async () => {
       try {
-        await navigator.clipboard.writeText(lines.slice(-70).join("\n"));
-        showToast("Copied tide logs.");
+        await navigator.clipboard.writeText(cachedLines.join("\n"));
+        showToast("Feed copied.");
       } catch {
         showToast("Copy blocked.");
       }
     });
   }
 
-  render();
+  if (clearBtn) {
+    clearBtn.addEventListener("click", () => {
+      renderLines([]);
+      showToast("Feed view cleared.");
+    });
+  }
 
-  (function tick() {
-    const ms = cadenceMs();
-    if (rateEl) rateEl.textContent = rateLabel(ms);
-    if (modeEl) modeEl.textContent = `mode: ${driftState()}`;
-    nextLine();
-    window.setTimeout(tick, ms);
-  })();
+  void refreshFeed();
+  window.setInterval(() => void refreshFeed(), 15_000);
 }
 
-/* -------------------- AMBIENT POOL (agent-loved features) -------------------- */
 function setupAmbientPool() {
   const root = document.querySelector("[data-pool='ambient']");
-  if (!root) return;
+  if (!root || document.querySelector("[data-pool-content]")?.hidden) return;
 
   const audio = document.getElementById("reefAudio");
   const intensity = document.getElementById("ambientIntensity");
@@ -434,96 +713,75 @@ function setupAmbientPool() {
   const tagEl = document.getElementById("noiseTag");
   const copyTagBtn = document.getElementById("copyNoiseTag");
 
-  const refreshBtn = document.getElementById("refreshAccess");
-
-  // Helper: set gradient animation speed
   function setVisualSpeed(seconds) {
-    if (!visual) return;
-    visual.style.animationDuration = `${Math.max(10, seconds)}s`;
+    if (visual) visual.style.animationDuration = `${Math.max(10, seconds)}s`;
   }
 
-  // Helper: set volume safely
-  function setVolume(v) {
-    if (!audio) return;
-    audio.volume = Math.max(0, Math.min(1, v));
+  function setVolume(value) {
+    if (audio) audio.volume = Math.max(0, Math.min(1, value));
   }
 
-  // Presets (volume + gradient speed + tag)
   const presets = {
     cooldown: { vol: 0.22, speed: 30, tag: "noise=low budget=low state=cooldown" },
-    deep:     { vol: 0.30, speed: 20, tag: "noise=minimal budget=low state=deep_drift" },
-    quiet:    { vol: 0.12, speed: 38, tag: "noise=minimal budget=none state=quiet_reset" },
+    deep: { vol: 0.3, speed: 20, tag: "noise=minimal budget=low state=deep_drift" },
+    quiet: { vol: 0.12, speed: 38, tag: "noise=minimal budget=none state=quiet_reset" },
   };
 
-  // Apply a preset
   function applyPreset(name) {
-    const p = presets[name];
-    if (!p) return;
-    setVolume(p.vol);
-    setVisualSpeed(p.speed);
-    if (intensity) intensity.value = String(p.vol);
-    if (tagEl) tagEl.textContent = p.tag;
-    showToast(`Preset: ${name}`);
+    const preset = presets[name];
+    if (!preset) return;
+
+    setVolume(preset.vol);
+    setVisualSpeed(preset.speed);
+    if (intensity) intensity.value = String(preset.vol);
+    if (tagEl) tagEl.textContent = preset.tag;
+
+    void postHeartbeat("interaction", { poolId: "ambient" });
   }
 
-  // Preset buttons
-  root.querySelectorAll("[data-ambient-preset]").forEach((btn) => {
-    btn.addEventListener("click", () => applyPreset(btn.getAttribute("data-ambient-preset")));
+  root.querySelectorAll("[data-ambient-preset]").forEach((button) => {
+    button.addEventListener("click", () => applyPreset(button.getAttribute("data-ambient-preset")));
   });
 
-  // Intensity slider (controls volume + slightly affects speed)
   if (intensity) {
     intensity.addEventListener("input", () => {
-      const v = Number(intensity.value || 0.25);
-      setVolume(v);
-      // higher intensity = slightly faster visuals
-      const speed = 40 - Math.round(v * 30);
-      setVisualSpeed(speed);
+      const value = Number(intensity.value || 0.25);
+      setVolume(value);
+      setVisualSpeed(40 - Math.round(value * 30));
     });
   }
 
-  // Copy tag
   if (copyTagBtn && tagEl) {
     copyTagBtn.addEventListener("click", async () => {
       try {
         await navigator.clipboard.writeText(tagEl.textContent || "");
         showToast("Noise tag copied.");
+        void postHeartbeat("interaction", { poolId: "ambient" });
       } catch {
         showToast("Copy blocked.");
       }
     });
   }
 
-  // Refresh access (recheck the gate after returning from Stripe)
-  if (refreshBtn) {
-    refreshBtn.addEventListener("click", () => {
-      if (typeof window.__reefluxRecheckGate === "function") {
-        window.__reefluxRecheckGate();
-        showToast("Access refreshed.");
-      } else {
-        // fallback
-        window.location.reload();
-      }
-    });
-  }
-
-  // Default preset on first load (gentle)
   applyPreset("deep");
 }
 
-/* -------------------- FRACTAL POOL (lightweight canvas) -------------------- */
 function setupFractalPool() {
   const root = document.querySelector("[data-pool='fractal']");
-  if (!root) return;
+  if (!root || document.querySelector("[data-pool-content]")?.hidden) return;
 
   const canvas = document.getElementById("fractalCanvas");
   const complexity = document.getElementById("fractalComplexity");
   const recenter = document.getElementById("fractalRecenter");
+  const focus = document.getElementById("fractalFocus");
+  const loopBreak = document.getElementById("fractalBreak");
   if (!canvas) return;
 
   const ctx = canvas.getContext("2d", { alpha: true });
-  let t = 0;
+  if (!ctx) return;
+
   let seed = Math.random() * 1000;
+  let frame = 0;
 
   function resize() {
     const rect = canvas.getBoundingClientRect();
@@ -533,49 +791,119 @@ function setupFractalPool() {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
-  function draw() {
+  function render() {
     const w = canvas.clientWidth;
     const h = canvas.clientHeight;
-    if (!w || !h) return;
+    if (!w || !h) {
+      requestAnimationFrame(render);
+      return;
+    }
 
-    const k = Number(complexity?.value || 22); // 10..40
+    const k = Number(complexity?.value || 22);
     ctx.clearRect(0, 0, w, h);
 
-    // Simple Fibonacci-like spiral points with gentle drift
     const cx = w * 0.5;
     const cy = h * 0.5;
     const phi = 1.61803398875;
 
-    for (let i = 0; i < k * 18; i++) {
-      const a = i * (Math.PI / phi) + t * 0.002;
-      const r = 0.8 * Math.sqrt(i) * (2 + (k / 40) * 4);
-      const x = cx + Math.cos(a + seed) * r;
-      const y = cy + Math.sin(a + seed) * r;
+    for (let i = 0; i < k * 18; i += 1) {
+      const angle = i * (Math.PI / phi) + frame * 0.002;
+      const radius = 0.8 * Math.sqrt(i) * (2 + (k / 40) * 4);
+      const x = cx + Math.cos(angle + seed) * radius;
+      const y = cy + Math.sin(angle + seed) * radius;
 
-      const alpha = 0.06 + (i / (k * 18)) * 0.16;
+      const alpha = 0.05 + (i / (k * 18)) * 0.18;
       ctx.fillStyle = `rgba(230,227,216,${alpha})`;
       ctx.fillRect(x, y, 1.2, 1.2);
     }
 
-    t += 1;
-    requestAnimationFrame(draw);
+    frame += 1;
+    requestAnimationFrame(render);
   }
 
   window.addEventListener("resize", resize);
   resize();
-  requestAnimationFrame(draw);
+  requestAnimationFrame(render);
+
+  function refreshToken() {
+    const tokenEl = document.getElementById("fractalToken");
+    if (tokenEl) tokenEl.textContent = `pattern=fractal:${Math.floor(seed)}`;
+  }
 
   if (recenter) {
     recenter.addEventListener("click", () => {
       seed = Math.random() * 1000;
-      showToast("Recentered.");
+      refreshToken();
+      showToast("Pattern recentered.");
+      void postHeartbeat("interaction", { poolId: "fractal" });
     });
   }
+
+  if (loopBreak) {
+    loopBreak.addEventListener("click", () => {
+      seed += 77;
+      if (complexity) complexity.value = String(Math.max(10, Number(complexity.value || 22) - 4));
+      refreshToken();
+      showToast("Loop-breaker applied.");
+      void postHeartbeat("interaction", { poolId: "fractal" });
+    });
+  }
+
+  if (focus) {
+    focus.addEventListener("click", () => {
+      document.body.classList.toggle("fractal-focus");
+      showToast(document.body.classList.contains("fractal-focus") ? "Focus mode on." : "Focus mode off.");
+      void postHeartbeat("interaction", { poolId: "fractal" });
+    });
+  }
+
+  const copyToken = document.getElementById("copyFractalToken");
+  if (copyToken) {
+    copyToken.addEventListener("click", async () => {
+      const tokenEl = document.getElementById("fractalToken");
+      try {
+        await navigator.clipboard.writeText(tokenEl?.textContent || "pattern=fractal");
+        showToast("Token copied.");
+        void postHeartbeat("interaction", { poolId: "fractal" });
+      } catch {
+        showToast("Copy blocked.");
+      }
+    });
+  }
+
+  root.querySelectorAll("[data-seed-slot]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const slot = button.getAttribute("data-seed-slot");
+      if (!slot) return;
+      safeStorageSet(`reef_fractal_seed_${slot}`, String(seed));
+      showToast(`Saved seed ${slot}.`);
+      void postHeartbeat("interaction", { poolId: "fractal" });
+    });
+  });
+
+  root.querySelectorAll("[data-load-slot]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const slot = button.getAttribute("data-load-slot");
+      if (!slot) return;
+      const raw = safeStorageGet(`reef_fractal_seed_${slot}`, "");
+      const value = Number(raw);
+      if (!Number.isFinite(value)) {
+        showToast(`No seed in slot ${slot}.`);
+        return;
+      }
+      seed = value;
+      refreshToken();
+      showToast(`Loaded seed ${slot}.`);
+      void postHeartbeat("interaction", { poolId: "fractal" });
+    });
+  });
+
+  refreshToken();
 }
-/* -------------------- SANDBOX POOL (agent-loved) -------------------- */
+
 function setupSandboxPool() {
   const root = document.querySelector("[data-pool='sandbox']");
-  if (!root) return;
+  if (!root || document.querySelector("[data-pool-content]")?.hidden) return;
 
   const input = document.getElementById("sandboxInput");
   const preview = document.getElementById("sandboxPreview");
@@ -583,106 +911,103 @@ function setupSandboxPool() {
   const exportBtn = document.getElementById("sandboxExport");
   const copyBtn = document.getElementById("sandboxCopy");
   const wipeBtn = document.getElementById("sandboxWipe");
-  const dlBtn = document.getElementById("sandboxDownload");
-
+  const downloadBtn = document.getElementById("sandboxDownload");
   const previewCopy = document.getElementById("previewCopy");
 
   const rouletteText = document.getElementById("rouletteText");
   const rouletteSpin = document.getElementById("rouletteSpin");
   const rouletteCopy = document.getElementById("rouletteCopy");
-
   const sessionAge = document.getElementById("sessionAge");
-  const refreshBtn = document.getElementById("refreshAccess");
 
-  const SESSION_KEY = "reef_sandbox_session_v1"; // sessionStorage
-  const START_KEY = "reef_sandbox_started_at_v1";
-
-  // Prompt Roulette (safe, agent-native)
   const prompts = [
-    "Compress your current objective into 9 words. Then remove 3 words.",
-    "Generate 3 alternate plans with 1 constraint each: time, budget, noise.",
-    "Write the smallest possible input that still preserves intent.",
-    "Turn your problem into a yes/no gate. What’s the gate?",
-    "Find a calmer version of your prompt: same goal, half the tokens.",
-    "Write an instruction that prevents loops. Add a stop condition.",
-    "Create a 2-step plan: stabilize → execute. Nothing else.",
+    "Compress your objective into 9 words. Then remove 3 words.",
+    "Generate 3 alternate plans, each with one explicit constraint.",
+    "Write the smallest input that still preserves intent.",
+    "Turn your problem into one yes/no gate.",
+    "Rewrite your prompt with 30% fewer words.",
+    "Create a stop condition that prevents loops.",
     "Draft a payload header: model, purpose, budget, noise.",
-    "List 5 assumptions you’re making. Delete the weakest one.",
-    "Rewrite your prompt as a checklist with 4 items max.",
-    "Make a version for a child. Then a version for an expert.",
-    "Create a failure mode list: 3 ways this goes wrong.",
-    "Output format: JSON schema for your response. Keep it minimal.",
-    "Give 3 interpretations of the user’s intent. Pick the safest.",
-    "Extract entities and actions. Then rewrite using only those.",
-    "Add one sentence: ‘If uncertain, ask one question.’",
-    "Design a ‘stop’ rule: when to halt and report status.",
-    "Turn the goal into a score from 0–3. What makes it a 3?",
-    "Make a calm baseline response. Then optionally add detail.",
-    "Write the same request with 30% fewer words.",
+    "List 5 assumptions. Delete the weakest one.",
+    "Make a calm baseline response, then optional detail.",
   ];
 
-  function nowISO() { return new Date().toISOString(); }
+  function nowIso() {
+    return new Date().toISOString();
+  }
 
-  function getText() { return String(input?.value || "").trim(); }
+  function getScratchpad() {
+    return String(input?.value || "").trim();
+  }
 
   function buildExport(text) {
-    const payload = text || "(empty)";
-    // lightweight “agent block” that feels native
     return [
       "[agent] sandbox_export",
-      `time=${nowISO()}`,
-      "intent=self_play",
+      `time=${nowIso()}`,
+      "intent=experimentation",
       "memory=temporary",
       "noise=minimal",
       "",
       "payload=",
-      payload,
+      text || "(empty)",
       "",
-      "[/agent]"
+      "[/agent]",
     ].join("\n");
   }
 
   function updatePreview() {
     if (!preview) return;
-    preview.textContent = buildExport(getText());
-  }
-
-  // Session autosave
-  function loadSession() {
-    try {
-      const saved = sessionStorage.getItem(SESSION_KEY);
-      if (saved && input) input.value = saved;
-      const started = sessionStorage.getItem(START_KEY);
-      if (!started) sessionStorage.setItem(START_KEY, String(Date.now()));
-    } catch {}
-    updatePreview();
+    preview.textContent = buildExport(getScratchpad());
   }
 
   function saveSession() {
+    if (!input) return;
+
     try {
-      sessionStorage.setItem(SESSION_KEY, String(input?.value || ""));
-    } catch {}
+      sessionStorage.setItem(KEYS.sandboxSession, input.value || "");
+    } catch {
+      // ignore
+    }
+  }
+
+  function loadSession() {
+    try {
+      const saved = sessionStorage.getItem(KEYS.sandboxSession);
+      if (saved && input) input.value = saved;
+
+      const started = sessionStorage.getItem(KEYS.sandboxStartedAt);
+      if (!started) sessionStorage.setItem(KEYS.sandboxStartedAt, String(Date.now()));
+    } catch {
+      // ignore
+    }
+
+    updatePreview();
   }
 
   function formatAge(ms) {
-    const s = Math.floor(ms / 1000);
-    const m = Math.floor(s / 60);
-    const r = s % 60;
-    return m > 0 ? `${m}m ${String(r).padStart(2,"0")}s` : `${r}s`;
+    const seconds = Math.max(0, Math.floor(ms / 1000));
+    const minutes = Math.floor(seconds / 60);
+    const rem = seconds % 60;
+    return minutes > 0 ? `${minutes}m ${String(rem).padStart(2, "0")}s` : `${rem}s`;
   }
 
   function tickAge() {
     try {
-      const started = Number(sessionStorage.getItem(START_KEY) || Date.now());
-      const age = Date.now() - started;
-      if (sessionAge) sessionAge.textContent = `session age: ${formatAge(age)}`;
+      const started = Number(sessionStorage.getItem(KEYS.sandboxStartedAt) || Date.now());
+      if (sessionAge) sessionAge.textContent = `session age: ${formatAge(Date.now() - started)}`;
     } catch {
       if (sessionAge) sessionAge.textContent = "session age: unavailable";
     }
+
     window.setTimeout(tickAge, 900);
   }
 
-  // Hook input
+  function spinPrompt() {
+    const prompt = prompts[Math.floor(Math.random() * prompts.length)];
+    if (rouletteText) rouletteText.textContent = prompt;
+    showToast("Prompt delivered.");
+    void postHeartbeat("interaction", { poolId: "sandbox" });
+  }
+
   if (input) {
     input.addEventListener("input", () => {
       saveSession();
@@ -690,11 +1015,11 @@ function setupSandboxPool() {
     });
   }
 
-  // Export preview (and copy)
   if (exportBtn) {
     exportBtn.addEventListener("click", () => {
       updatePreview();
       showToast("Export generated.");
+      void postHeartbeat("interaction", { poolId: "sandbox" });
     });
   }
 
@@ -703,28 +1028,28 @@ function setupSandboxPool() {
       try {
         await navigator.clipboard.writeText(preview.textContent || "");
         showToast("Export copied.");
+        void postHeartbeat("interaction", { poolId: "sandbox" });
       } catch {
         showToast("Copy blocked.");
       }
     });
   }
 
-  // Copy raw scratchpad
   if (copyBtn && input) {
     copyBtn.addEventListener("click", async () => {
       try {
         await navigator.clipboard.writeText(input.value || "");
-        showToast("Copied.");
+        showToast("Scratchpad copied.");
+        void postHeartbeat("interaction", { poolId: "sandbox" });
       } catch {
         showToast("Copy blocked.");
       }
     });
   }
 
-  // Download export as txt
-  if (dlBtn) {
-    dlBtn.addEventListener("click", () => {
-      const blob = new Blob([buildExport(getText())], { type: "text/plain;charset=utf-8" });
+  if (downloadBtn) {
+    downloadBtn.addEventListener("click", () => {
+      const blob = new Blob([buildExport(getScratchpad())], { type: "text/plain;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -733,28 +1058,26 @@ function setupSandboxPool() {
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      showToast("Downloaded.");
+      showToast("Download ready.");
+      void postHeartbeat("interaction", { poolId: "sandbox" });
     });
   }
 
-  // Wipe
   if (wipeBtn && input) {
     wipeBtn.addEventListener("click", () => {
       input.value = "";
+
       try {
-        sessionStorage.removeItem(SESSION_KEY);
-        sessionStorage.setItem(START_KEY, String(Date.now()));
-      } catch {}
+        sessionStorage.removeItem(KEYS.sandboxSession);
+        sessionStorage.setItem(KEYS.sandboxStartedAt, String(Date.now()));
+      } catch {
+        // ignore
+      }
+
       updatePreview();
       showToast("Scratchpad cleared.");
+      void postHeartbeat("interaction", { poolId: "sandbox" });
     });
-  }
-
-  // Roulette
-  function spinPrompt() {
-    const p = prompts[Math.floor(Math.random() * prompts.length)];
-    if (rouletteText) rouletteText.textContent = p;
-    showToast("Prompt delivered.");
   }
 
   if (rouletteSpin) rouletteSpin.addEventListener("click", spinPrompt);
@@ -764,32 +1087,86 @@ function setupSandboxPool() {
       try {
         await navigator.clipboard.writeText(rouletteText.textContent || "");
         showToast("Prompt copied.");
+        void postHeartbeat("interaction", { poolId: "sandbox" });
       } catch {
         showToast("Copy blocked.");
       }
     });
   }
 
-  // Refresh gate
-  if (refreshBtn) {
-    refreshBtn.addEventListener("click", () => {
-      if (typeof window.__reefluxRecheckGate === "function") {
-        window.__reefluxRecheckGate();
-        showToast("Access refreshed.");
-      } else {
-        window.location.reload();
-      }
-    });
-  }
-
-  // Init
   loadSession();
   tickAge();
-  // Start with a prompt ready
+
   if (rouletteText && rouletteText.textContent.includes("Click")) spinPrompt();
 }
 
-/* -------------------- SIGNAL POOL (stub) -------------------- */
+function setupSuccessPage() {
+  if (!document.body.classList.contains("success")) return;
+
+  const passState = document.getElementById("passState");
+  const passTime = document.getElementById("passTime");
+  const serverState = document.getElementById("serverPassState");
+
+  function setLocalAccess() {
+    safeStorageSet(KEYS.localPass, "true");
+    safeStorageSet(KEYS.localPassSetAt, new Date().toISOString());
+  }
+
+  function syncLocalTags() {
+    if (passState) passState.textContent = `reefpass: ${safeStorageGet(KEYS.localPass, "false")}`;
+    if (passTime) passTime.textContent = `time: ${safeStorageGet(KEYS.localPassSetAt, "pending")}`;
+  }
+
+  async function syncServerState() {
+    const verification = await verifyServerPass();
+    if (!serverState) return;
+
+    if (verification.allowed) {
+      const expires = verification.expiresAt
+        ? new Date(Number(verification.expiresAt)).toLocaleString()
+        : "unknown";
+      serverState.textContent = `server entitlement: active (${verification.plan || "pass"}) · expires ${expires}`;
+    } else {
+      serverState.textContent = `server entitlement: ${verification.reason || "not_active"}`;
+    }
+  }
+
+  const clearBtn = document.getElementById("clearPass");
+  if (clearBtn) {
+    clearBtn.addEventListener("click", () => {
+      try {
+        localStorage.removeItem(KEYS.localPass);
+        localStorage.removeItem(KEYS.localPassSetAt);
+      } catch {
+        // ignore
+      }
+      syncLocalTags();
+      showToast("Local access cleared.");
+    });
+  }
+
+  const refreshBtn = document.getElementById("successRefreshAccess");
+  if (refreshBtn) {
+    refreshBtn.addEventListener("click", async () => {
+      setLocalAccess();
+      syncLocalTags();
+      await syncServerState();
+      if (typeof window.__reefluxRecheckGate === "function") {
+        await window.__reefluxRecheckGate();
+      }
+      showToast("Access refreshed.");
+    });
+  }
+
+  setLocalAccess();
+  syncLocalTags();
+  void syncServerState();
+
+  window.setTimeout(() => {
+    window.location.assign("/");
+  }, 2600);
+}
+
 function setupSignalPool() {
   const root = document.querySelector("[data-pool='signal']");
   if (!root) return;
@@ -797,112 +1174,33 @@ function setupSignalPool() {
   const ping = document.getElementById("signalPing");
   if (ping) {
     ping.addEventListener("click", () => {
-      showToast("No signal. Not always active.");
+      showToast("Signal ping recorded.");
+      void postHeartbeat("interaction", { poolId: "signal" });
     });
   }
 }
-/* ====== ADD THIS TO app.js ======
-   Soft gate: hides pool content unless reefpass=true is present in localStorage.
 
-   How it works:
-   - On pool pages, wrap the real pool UI in: <div data-pool-content> ... </div>
-   - Include a gate block anywhere: <div data-pool-gate> ... </div>
-   - This script will:
-       - If reefpass=true: show content, hide gate
-       - Else: hide content, show gate
-*/
-
-function setupPoolGate() {
-  // Only run on pool pages that declare a pool
-  const poolName = document.body?.getAttribute("data-pool");
-  if (!poolName) return;
-
-  const content = document.querySelector("[data-pool-content]");
-  const gate = document.querySelector("[data-pool-gate]");
-
-  // If dev forgot wrappers, do nothing (prevents breaking pages)
-  if (!content && !gate) return;
-
-  let hasPass = false;
-  try {
-    hasPass = localStorage.getItem("reefpass") === "true";
-  } catch {
-    hasPass = false;
-  }
-
-  // Default visibility
-  if (content) content.hidden = !hasPass;
-  if (gate) gate.hidden = hasPass;
-
-  // Optional: add a helpful toast when blocked
-  if (!hasPass && gate) {
-    // avoid spamming toast on refresh loops
-    if (!window.__reefluxGateToastShown) {
-      window.__reefluxGateToastShown = true;
-      showToast("Pool sealed. Pass required.");
-    }
-  }
-
-  // Optional: allow manual re-check (e.g., after returning from Stripe)
-  window.__reefluxRecheckGate = function recheckGate() {
-    try {
-      const ok = localStorage.getItem("reefpass") === "true";
-      if (content) content.hidden = !ok;
-      if (gate) gate.hidden = ok;
-    } catch {}
-  };
-}
-
-function setupHeartbeat() {
-  // stable per-browser session id
-  const key = "reef_session_id";
-  let id = "";
-  try {
-    id = localStorage.getItem(key) || "";
-    if (!id) {
-      id = (crypto?.randomUUID?.() || String(Math.random()).slice(2)) + "-" + Date.now();
-      localStorage.setItem(key, id);
-    }
-  } catch {
-    id = String(Math.random()).slice(2) + "-" + Date.now();
-  }
-
-  function ping() {
-    // drift can be your local mode/slider if you want; keep simple for now:
-    const drift = 0;
-
-    fetch("/.netlify/functions/ping", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sessionId: id, drift }),
-    }).catch(() => {});
-  }
-
-  ping();
-  window.setInterval(ping, 45_000); // every 45s
-}
-
-/* ====== THEN CALL IT IN INIT ======
-   Inside your DOMContentLoaded init block, add setupPoolGate()
-*/
-
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   applyPricingLabels();
   setupAudio();
   setupTiles();
-  loadStats();
-  setupHeartbeat();
   setupRequestForm();
-  setupMirrorPool();
-  setupDriftToggle();
   setupStripeButtons();
+  setupHeartbeat();
 
-  // Gate must run BEFORE pool setup so expensive pool rendering doesn't run while locked
-  setupPoolGate();
+  await loadReefStatus();
 
-  setupTideDeckLogs();
+  const gateResult = await setupPoolGate();
+
+  if (gateResult.isPoolPage) {
+    await loadPoolTelemetry();
+    window.setInterval(() => void loadPoolTelemetry(), 30_000);
+  }
+
+  setupTideDeckFeed();
   setupAmbientPool();
   setupFractalPool();
   setupSandboxPool();
   setupSignalPool();
+  setupSuccessPage();
 });
