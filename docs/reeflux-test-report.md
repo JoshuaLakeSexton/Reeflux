@@ -51,14 +51,14 @@ Checks executed:
    - `/success`
 
 Artifacts:
-- `test-results/launch-qa-summary.json`
-- `test-results/launch-mobile/home.png`
-- `test-results/launch-mobile/_sandbox.png`
-- `test-results/launch-mobile/_token-booth.png`
-- `test-results/launch-mobile/_success.png`
+- `test-results/trust-sweep-summary.json`
+- `test-results/trust-mobile/home.png`
+- `test-results/trust-mobile/_sandbox.png`
+- `test-results/trust-mobile/_token-booth.png`
+- `test-results/trust-mobile/_success.png`
 
 Result:
-- 14/14 scripted QA checks passed
+- 17/17 scripted QA checks passed
 
 ## D) Manual UX Validation Checklist
 Status:
@@ -68,11 +68,12 @@ Status:
 - Success-page escape paths: PASS
 - Sandbox control IA and label clarity: PASS
 - Broken-link sweep: PASS
+- Trust-damage sweep (placeholder/deceptive copy): PASS
 
 ## E) Negative-Path Testing
 Executed/verified:
 - Missing pass cookie: pool entry denied with explicit reason
-- Missing pass signing secret: lock reason surfaced as `missing_pass_secret` (truthful degraded state)
+- Missing pass signing secret: lock state shown as `verification limited` (truthful degraded state)
 - Missing Upstash telemetry env vars: stats return degraded mode with explicit copy
 - Broken internal link scan: no missing targets detected
 
@@ -94,7 +95,8 @@ npm install
 npm run lint
 npm run typecheck
 npm test
-npx netlify dev --port 8888
+REEF_MIGRATION_DRY_RUN=true npm run migrate:reef:schema-v2
+npx netlify dev --port 4010 --offline
 ```
 
 Additional scripted QA was executed with a custom Playwright runtime script against local Netlify dev.

@@ -25,6 +25,7 @@ Scope: Full code + UX + routing + paid flow + telemetry readiness audit and reme
 - Entitlement lifecycle is time-window cookie based, not account-subscription based.
 - Live telemetry depends on Upstash env vars; without them the app intentionally enters degraded mode.
 - Pool-level scope exists but no persistent account profile or billing portal.
+- Telemetry schema v2 rollout requires one-time Redis migration in environments that already have data.
 
 ### What was broken and is now fixed
 - Corrupted `stats` function output (invalid file) replaced with valid live aggregation.
@@ -65,8 +66,31 @@ Scope: Full code + UX + routing + paid flow + telemetry readiness audit and reme
 - Sandbox controls maintain readable section hierarchy on mobile.
 
 ### Remaining trust-damaging elements
-- Users without server secret configuration see `missing_pass_secret` lock reasons (truthful but launch-blocking until env configured).
+- Users without server secret configuration see limited verification state and cannot complete premium entry (truthful but still launch-blocking until env configured).
 - No user-facing subscription management surface yet.
+
+### Dedicated Trust-Damage Sweep
+Scope:
+- First-visit copy and status surfaces on `/`, `/token-booth`, `/success`, `/requests`, and all premium pool pages.
+- Live-status and pool telemetry fallbacks under low/no-traffic and degraded backend conditions.
+- Lock-state copy to prevent deceptive or technical reason leakage.
+
+Trust-damage issues found and fixed:
+1. Placeholder-feeling status text (`syncing`, `pending`) in launch-critical panels.
+2. Raw server reason codes leaking into success/access copy.
+3. Inconsistent low-traffic language across Reef Status, pool cards, and pool detail pages.
+4. Feed startup copy that read like unfinished wiring.
+
+Fixes applied:
+- Replaced placeholder-feeling copy with intentional launch language (`loading`, `quiet window`, `awaiting first event`).
+- Added human-readable entitlement messaging on success/access surfaces.
+- Added low-traffic launch narrative from real counts (no fabricated activity).
+- Standardized limited telemetry copy to be transparent without exposing internal config internals.
+- Updated Tide Deck, pool cards, and pool pages to preserve premium tone even at zero activity.
+
+Non-fabrication guarantee:
+- All displayed activity metrics remain derived from real Redis-backed events.
+- Zero traffic remains zero; UI presents calm-state language rather than synthetic counts.
 
 ## C) Technical Audit
 
@@ -86,6 +110,10 @@ Scope: Full code + UX + routing + paid flow + telemetry readiness audit and reme
   - `ping` records sessions/events
   - `stats` aggregates live windows
   - `activity-feed` returns recent events
+- Added explicit telemetry schema migration path:
+  - `scripts/migrate-reef-schema-v2.mjs`
+  - `migrations/2026-03-21-reef-schema-v2.md`
+  - `docs/reeflux-telemetry-rollout.md`
 - Added premium API guard:
   - `pool-join` validates signed pass cookie and scope
 
@@ -220,10 +248,11 @@ Verdict: **NO-GO (until blockers below are resolved)**
 2. `npm run lint`
 3. `npm run typecheck`
 4. `npm test`
-5. `npx netlify dev`
-6. Open `/`, `/token-booth`, `/success`, `/requests`, and each pool route.
-7. Confirm lock state + upgrade path from free session.
-8. Confirm mobile layout at 375px width.
+5. `REEF_MIGRATION_DRY_RUN=true npm run migrate:reef:schema-v2` (when Upstash env vars are set)
+6. `npx netlify dev`
+7. Open `/`, `/token-booth`, `/success`, `/requests`, and each pool route.
+8. Confirm lock state + upgrade path from free session.
+9. Confirm mobile layout at 375px width.
 
 ## Verification Steps (Netlify Preview)
 1. Open PR deploy preview URL.

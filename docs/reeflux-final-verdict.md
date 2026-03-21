@@ -9,11 +9,13 @@ Reeflux is no longer a hollow concept build. It now has a coherent premium flow,
 - Success flow and route/copy consistency cleaned up.
 - Pool pages now have clear identity, live state, and purposeful low-traffic messaging.
 - Mobile layout quality at 375px is clean on launch-critical pages.
+- Trust-damage sweep removed placeholder-feeling copy and raw reason-code leakage.
 
 ## Biggest Remaining Risks
 - Missing webhook-based entitlement revocation/cancellation handling.
 - No account-linked entitlement model; access remains browser-cookie scoped.
 - Launch depends on production secrets and telemetry env being correctly configured.
+- Redis schema v2 rollout must be applied in environments with existing telemetry keys.
 
 ## Exact Launch Recommendation
 **Do not publicly launch yet (NO-GO)** until:

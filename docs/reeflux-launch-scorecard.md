@@ -14,6 +14,9 @@ Reeflux now presents a coherent premium reef product: live event-backed telemetr
 - Success page upgraded with clear recovery/navigation actions.
 - Route and link hygiene pass completed; mirror 404 risk removed.
 - Sandbox IA polished for desktop/mobile readability.
+- Dedicated trust-damage sweep completed (placeholder and deceptive-feel copy removed).
+- Low-traffic launch states polished across Reef Status and pool surfaces.
+- Redis telemetry schema migration path documented and scriptable.
 
 ## 3) What Remains Weak
 - No account-linked entitlement model (browser-cookie scoped).
