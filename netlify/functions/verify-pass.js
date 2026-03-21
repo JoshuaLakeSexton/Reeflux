@@ -1,58 +1,37 @@
-const crypto = require("crypto");
-
-function parseCookies(cookieHeader) {
-  const out = {};
-  (cookieHeader || "").split(";").forEach((c) => {
-    const [k, ...v] = c.trim().split("=");
-    if (!k) return;
-    out[k] = decodeURIComponent(v.join("=") || "");
-  });
-  return out;
-}
-
-function decodeB64UrlToJson(b64url) {
-  let s = b64url.replace(/-/g, "+").replace(/_/g, "/");
-  while (s.length % 4) s += "=";
-  return JSON.parse(Buffer.from(s, "base64").toString("utf8"));
-}
-
-function verify(token, secret) {
-  const parts = (token || "").split(".");
-  if (parts.length !== 2) return null;
-
-  const [payloadB64, sig] = parts;
-  const expected = crypto.createHmac("sha256", secret).update(payloadB64).digest("base64")
-    .replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
-
-  if (sig !== expected) return null;
-  return decodeB64UrlToJson(payloadB64);
-}
+const { json, readPassFromEvent } = require("./_reef");
 
 exports.handler = async (event) => {
+  if (event.httpMethod === "OPTIONS") {
+    return json(200, { ok: true });
+  }
+
+  if (event.httpMethod !== "GET") {
+    return json(405, { ok: false, error: "Method Not Allowed" });
+  }
+
   try {
-    const cookies = parseCookies(event.headers.cookie);
-    const token = cookies.reeflux_pass;
+    const entitlement = readPassFromEvent(event);
 
-    if (!token) {
-      return { statusCode: 200, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ allowed: false, reason: "no_pass" }) };
+    if (!entitlement.allowed) {
+      return json(200, {
+        allowed: false,
+        reason: entitlement.reason,
+      });
     }
 
-    const payload = verify(token, process.env.PASS_SIGNING_SECRET);
-    if (!payload) {
-      return { statusCode: 200, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ allowed: false, reason: "invalid_token" }) };
-    }
-
-    if (!payload.exp || Date.now() > payload.exp) {
-      return { statusCode: 200, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ allowed: false, reason: "expired" }) };
-    }
-
-    return {
-      statusCode: 200,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ allowed: true, scope: payload.scope, expiresAt: payload.exp })
-    };
-  } catch (e) {
-    console.error("verify-pass error:", e);
-    return { statusCode: 500, body: "verify-pass failed" };
+    return json(200, {
+      allowed: true,
+      reason: "ok",
+      scope: entitlement.payload.scope,
+      plan: entitlement.payload.plan,
+      expiresAt: entitlement.payload.exp,
+      issuedAt: entitlement.payload.issued_at,
+    });
+  } catch (error) {
+    console.error("verify-pass error:", error);
+    return json(500, {
+      allowed: false,
+      reason: "verify_failed",
+    });
   }
 };
