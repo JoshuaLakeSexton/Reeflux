@@ -132,6 +132,10 @@ function getGateStateTag(reason) {
     invalid_token: "Access refresh needed",
     scope_denied: "Tier upgrade required",
     missing_pass_secret: "Verification limited",
+    entitlement_store_unavailable: "Verification limited",
+    entitlement_not_found: "Entitlement pending",
+    entitlement_past_due: "Billing issue",
+    entitlement_inactive: "Entitlement inactive",
     verify_failed: "Verification limited",
     join_failed: "Access check pending",
   };
@@ -469,6 +473,14 @@ function describeAccessReason(reason) {
     verify_failed:
       "Access verification is temporarily limited. Please retry shortly.",
     scope_denied: "Your current pass does not include this pool.",
+    entitlement_store_unavailable:
+      "Entitlement service is temporarily unavailable. Your payment state is preserved. Try Refresh Access shortly.",
+    entitlement_not_found:
+      "Payment may still be syncing. If you just paid, wait a moment and press Refresh Access.",
+    entitlement_past_due:
+      "Billing is not current for this entitlement. Update payment to restore premium access.",
+    entitlement_inactive:
+      "This entitlement is inactive. Renew access in Token Booth to continue.",
     join_failed: "Pool access check is still settling. Try Refresh Access.",
   };
 
@@ -483,6 +495,10 @@ function describeServerEntitlement(reason) {
     expired: "expired",
     scope_denied: "active (limited scope)",
     missing_pass_secret: "verification limited",
+    entitlement_store_unavailable: "verification limited",
+    entitlement_not_found: "sync pending",
+    entitlement_past_due: "billing issue",
+    entitlement_inactive: "inactive",
     verify_failed: "verification limited",
   };
 
@@ -539,7 +555,12 @@ async function setupPoolGate() {
       const reasonMessage = describeAccessReason(verification.reason);
       setAccessState(false, reasonMessage, verification.reason);
 
-      if (hasLocalPass() && verification.reason === "missing_pass_secret" && isLocalDev()) {
+      if (
+        hasLocalPass()
+        && (verification.reason === "missing_pass_secret"
+          || verification.reason === "entitlement_store_unavailable")
+        && isLocalDev()
+      ) {
         setAccessState(true, "Local dev mode: pass verified via browser storage.", "dev_mode");
         return true;
       }
@@ -1150,10 +1171,25 @@ function setupSuccessPage() {
   const passState = document.getElementById("passState");
   const passTime = document.getElementById("passTime");
   const serverState = document.getElementById("serverPassState");
+  const statusNote = document.getElementById("successStatusNote");
 
-  function setLocalAccess() {
-    safeStorageSet(KEYS.localPass, "true");
-    safeStorageSet(KEYS.localPassSetAt, new Date().toISOString());
+  const params = new URLSearchParams(window.location.search || "");
+  const pendingReason = params.get("reason");
+  const pendingStatus = params.get("status");
+
+  function setLocalAccess(isEnabled) {
+    if (isEnabled) {
+      safeStorageSet(KEYS.localPass, "true");
+      safeStorageSet(KEYS.localPassSetAt, new Date().toISOString());
+      return;
+    }
+
+    try {
+      localStorage.removeItem(KEYS.localPass);
+      localStorage.removeItem(KEYS.localPassSetAt);
+    } catch {
+      // ignore storage failures
+    }
   }
 
   function syncLocalTags() {
@@ -1161,55 +1197,78 @@ function setupSuccessPage() {
     if (passTime) passTime.textContent = `time: ${safeStorageGet(KEYS.localPassSetAt, "not set")}`;
   }
 
-  async function syncServerState() {
-    const verification = await verifyServerPass();
-    if (!serverState) return;
+  function describeSuccessPending(reason) {
+    const map = {
+      missing_session_id:
+        "No checkout session was provided. Open Token Booth and complete payment to unlock access.",
+      invalid_session_id:
+        "The checkout session could not be verified. Re-open Token Booth and try again.",
+      stripe_unavailable:
+        "Billing verification is temporarily unavailable. Your payment status is preserved. Try Refresh Access shortly.",
+      entitlement_sync_pending:
+        "Payment completed, but entitlement confirmation is still syncing. Refresh Access in a few moments.",
+      entitlement_write_failed:
+        "Payment completed, but entitlement write did not complete. Refresh Access shortly.",
+      entitlement_store_unavailable:
+        "Entitlement service is temporarily unavailable. Access will unlock after service recovers.",
+      payment_not_completed:
+        "Payment was not confirmed for this session. Complete checkout to unlock access.",
+      env_invalid:
+        "Launch environment is missing required billing/access config. Access cannot be confirmed yet.",
+    };
 
-    if (verification.allowed) {
-      const expires = verification.expiresAt
-        ? new Date(Number(verification.expiresAt)).toLocaleString()
-        : "unknown";
-      serverState.textContent = `server entitlement: active (${verification.plan || "pass"}) · expires ${expires}`;
-    } else {
-      const entitlementLabel = describeServerEntitlement(verification.reason);
-      serverState.textContent = `server entitlement: ${entitlementLabel}`;
-    }
+    return map[reason] || "Entitlement confirmation is pending. Use Refresh Access to retry.";
   }
 
-  const clearBtn = document.getElementById("clearPass");
-  if (clearBtn) {
-    clearBtn.addEventListener("click", () => {
-      try {
-        localStorage.removeItem(KEYS.localPass);
-        localStorage.removeItem(KEYS.localPassSetAt);
-      } catch {
-        // ignore
+  async function syncServerState() {
+    const verification = await verifyServerPass();
+    const isAllowed = Boolean(verification.allowed);
+
+    setLocalAccess(isAllowed);
+    syncLocalTags();
+
+    if (serverState) {
+      if (isAllowed) {
+        const expires = verification.expiresAt
+          ? new Date(Number(verification.expiresAt)).toLocaleString()
+          : "unknown";
+        serverState.textContent = `server entitlement: active (${verification.plan || "pass"}) · expires ${expires}`;
+      } else {
+        const entitlementLabel = describeServerEntitlement(verification.reason);
+        serverState.textContent = `server entitlement: ${entitlementLabel}`;
       }
-      syncLocalTags();
-      showToast("Local access cleared.");
-    });
+    }
+
+    if (statusNote) {
+      if (isAllowed) {
+        statusNote.textContent = "Server entitlement confirmed. You can enter premium pools now.";
+      } else if (pendingStatus === "pending") {
+        statusNote.textContent = describeSuccessPending(pendingReason || verification.reason);
+      } else {
+        statusNote.textContent = describeAccessReason(verification.reason);
+      }
+    }
+
+    return isAllowed;
   }
 
   const refreshBtn = document.getElementById("successRefreshAccess");
   if (refreshBtn) {
     refreshBtn.addEventListener("click", async () => {
-      setLocalAccess();
-      syncLocalTags();
-      await syncServerState();
+      const allowed = await syncServerState();
       if (typeof window.__reefluxRecheckGate === "function") {
         await window.__reefluxRecheckGate();
       }
-      showToast("Access refreshed.");
+      showToast(allowed ? "Access refreshed." : "Entitlement still pending.");
     });
   }
 
-  setLocalAccess();
-  syncLocalTags();
-  void syncServerState();
-
-  window.setTimeout(() => {
-    window.location.assign("/");
-  }, 2600);
+  void syncServerState().then((allowed) => {
+    if (!allowed) return;
+    window.setTimeout(() => {
+      window.location.assign("/");
+    }, 2600);
+  });
 }
 
 function setupSignalPool() {

@@ -3,10 +3,10 @@ const {
   getRedis,
   parseJsonBody,
   normalizePoolId,
-  readPassFromEvent,
   canAccessPool,
   recordActivity,
   getPoolSnapshot,
+  resolveEntitlementFromEvent,
 } = require("./_reef");
 
 exports.handler = async (event) => {
@@ -18,51 +18,51 @@ exports.handler = async (event) => {
     return json(405, { ok: false, error: "Method Not Allowed" });
   }
 
-  const body = parseJsonBody(event);
-  const poolId = normalizePoolId(body.poolId);
-  const sessionId = String(body.sessionId || "").trim();
-
-  if (!poolId) {
-    return json(400, {
-      ok: false,
-      allowed: false,
-      reason: "invalid_pool",
-    });
-  }
-
-  if (!sessionId) {
-    return json(400, {
-      ok: false,
-      allowed: false,
-      reason: "missing_session_id",
-    });
-  }
-
-  const entitlement = readPassFromEvent(event);
-  if (!entitlement.allowed) {
-    return json(403, {
-      ok: false,
-      allowed: false,
-      reason: entitlement.reason,
-      upgrade_url: "/token-booth",
-      message: "Premium access required for this pool.",
-    });
-  }
-
-  if (!canAccessPool(entitlement.payload, poolId)) {
-    return json(403, {
-      ok: false,
-      allowed: false,
-      reason: "scope_denied",
-      scope: entitlement.payload.scope,
-      upgrade_url: "/token-booth",
-      message: "Your current pass does not include this pool.",
-    });
-  }
-
-  const redis = getRedis();
-
   try {
+    const body = parseJsonBody(event);
+    const poolId = normalizePoolId(body.poolId);
+    const sessionId = String(body.sessionId || "").trim();
+
+    if (!poolId) {
+      return json(400, {
+        ok: false,
+        allowed: false,
+        reason: "invalid_pool",
+      });
+    }
+
+    if (!sessionId) {
+      return json(400, {
+        ok: false,
+        allowed: false,
+        reason: "missing_session_id",
+      });
+    }
+
+    const redis = getRedis();
+    const entitlement = await resolveEntitlementFromEvent(event, redis);
+
+    if (!entitlement.allowed) {
+      return json(403, {
+        ok: false,
+        allowed: false,
+        reason: entitlement.reason,
+        upgrade_url: "/token-booth",
+        message: "Premium access could not be verified for this pool.",
+      });
+    }
+
+    if (!canAccessPool(entitlement.payload, poolId)) {
+      return json(403, {
+        ok: false,
+        allowed: false,
+        reason: "scope_denied",
+        scope: entitlement.payload.scope,
+        upgrade_url: "/token-booth",
+        message: "Your current pass does not include this pool.",
+      });
+    }
+
     await recordActivity(redis, {
       sessionId,
       actorType: body.actorType,
@@ -87,14 +87,22 @@ exports.handler = async (event) => {
         last_activity: null,
       },
       degraded: !redis,
+      entitlement: {
+        id: entitlement.payload.entitlementId || entitlement.payload.eid || null,
+        status: entitlement.payload.status || "active",
+      },
     });
   } catch (error) {
-    console.error("pool-join error", error);
+    console.error("pool-join error", {
+      message: error?.message || String(error),
+      type: error?.type || "pool_join_failed",
+    });
+
     return json(500, {
       ok: false,
       allowed: false,
       reason: "pool_join_failed",
-      message: error?.message || "Unable to join pool",
+      message: "Unable to join pool right now.",
     });
   }
 };

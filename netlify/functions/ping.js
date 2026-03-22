@@ -3,8 +3,8 @@ const {
   getRedis,
   parseJsonBody,
   normalizePoolId,
-  readPassFromEvent,
   recordActivity,
+  resolveEntitlementFromEvent,
 } = require("./_reef");
 
 exports.handler = async (event) => {
@@ -16,24 +16,26 @@ exports.handler = async (event) => {
     return json(405, { ok: false, error: "Method Not Allowed" });
   }
 
-  const body = parseJsonBody(event);
-
-  const sessionId = String(body.sessionId || "").trim();
-  if (!sessionId) {
-    return json(400, { ok: false, error: "Missing sessionId" });
-  }
-
-  const entitlement = readPassFromEvent(event);
-  const redis = getRedis();
+  let entitlement = { allowed: false, reason: "entitlement_unknown" };
 
   try {
+    const body = parseJsonBody(event);
+
+    const sessionId = String(body.sessionId || "").trim();
+    if (!sessionId) {
+      return json(400, { ok: false, error: "Missing sessionId" });
+    }
+
+    const redis = getRedis();
+    entitlement = await resolveEntitlementFromEvent(event, redis);
+
     const activity = await recordActivity(redis, {
       sessionId,
       actorType: body.actorType,
       actorId: body.actorId,
       poolId: normalizePoolId(body.poolId),
       eventType: body.eventType || "heartbeat",
-      authenticated: entitlement.allowed || body.authenticated === true,
+      authenticated: entitlement.allowed,
     });
 
     return json(200, {
@@ -49,12 +51,17 @@ exports.handler = async (event) => {
       },
     });
   } catch (error) {
-    console.error("ping error", error);
+    console.error("ping error", {
+      message: error?.message || String(error),
+      type: error?.type || "ping_failed",
+    });
+
     return json(200, {
       ok: true,
       recorded: false,
       degraded: true,
-      reason: error?.message || "Ping failed",
+      reason: "ping_failed",
+      reason_code: error?.message || "ping_failed",
       entitlement: {
         allowed: entitlement.allowed,
         reason: entitlement.reason,

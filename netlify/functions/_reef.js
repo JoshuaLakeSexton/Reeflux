@@ -1,5 +1,6 @@
 const crypto = require("crypto");
 const { Redis } = require("@upstash/redis");
+const { getRedisRuntimeConfig, readEnv } = require("./_env");
 
 const KNOWN_POOLS = Object.freeze(["tide", "ambient", "fractal", "sandbox"]);
 
@@ -9,6 +10,13 @@ const WINDOWS = Object.freeze({
   active1hMs: 60 * 60 * 1000,
   events24hMs: 24 * 60 * 60 * 1000,
   pruneSessionsMs: 2 * 60 * 60 * 1000,
+});
+
+const ENTITLEMENT_STATUS = Object.freeze({
+  active: "active",
+  past_due: "past_due",
+  canceled: "canceled",
+  inactive: "inactive",
 });
 
 function getPoolAura(active5m) {
@@ -93,14 +101,16 @@ function sanitizeActorType(actorType) {
 }
 
 function hasRedisConfig() {
-  return Boolean(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
+  return getRedisRuntimeConfig().ok;
 }
 
 function getRedis() {
-  if (!hasRedisConfig()) return null;
+  const redisConfig = getRedisRuntimeConfig();
+  if (!redisConfig.ok) return null;
+
   return new Redis({
-    url: process.env.UPSTASH_REDIS_REST_URL,
-    token: process.env.UPSTASH_REDIS_REST_TOKEN,
+    url: redisConfig.url,
+    token: redisConfig.token,
   });
 }
 
@@ -169,8 +179,30 @@ function verifyPassToken(token, secret) {
   }
 }
 
+function buildPassCookie(token, maxAgeSeconds) {
+  return [
+    `reeflux_pass=${token}`,
+    "Path=/",
+    "HttpOnly",
+    "Secure",
+    "SameSite=Lax",
+    `Max-Age=${Math.max(0, Number(maxAgeSeconds || 0))}`,
+  ].join("; ");
+}
+
+function clearPassCookie() {
+  return [
+    "reeflux_pass=",
+    "Path=/",
+    "HttpOnly",
+    "Secure",
+    "SameSite=Lax",
+    "Max-Age=0",
+  ].join("; ");
+}
+
 function readPassFromEvent(event) {
-  const secret = process.env.PASS_SIGNING_SECRET;
+  const secret = readEnv("PASS_SIGNING_SECRET");
   if (!secret) {
     return { allowed: false, reason: "missing_pass_secret", payload: null };
   }
@@ -200,6 +232,244 @@ function canAccessPool(payload, poolId) {
   if (scope.startsWith("pool:") && scope.replace("pool:", "") === poolId) return true;
 
   return false;
+}
+
+function normalizeEntitlementStatus(status) {
+  const value = String(status || "inactive").trim().toLowerCase();
+
+  if (value === "active" || value === "trialing") return ENTITLEMENT_STATUS.active;
+  if (value === "past_due" || value === "unpaid" || value === "incomplete") return ENTITLEMENT_STATUS.past_due;
+  if (value === "canceled" || value === "cancelled" || value === "incomplete_expired") {
+    return ENTITLEMENT_STATUS.canceled;
+  }
+
+  return ENTITLEMENT_STATUS.inactive;
+}
+
+function parseEntitlementRecord(raw) {
+  if (!raw || typeof raw !== "object" || Object.keys(raw).length === 0) return null;
+
+  const expiresAt = Number(raw.expires_at || 0);
+  const lastEventCreatedMs = Number(raw.last_event_created || 0);
+  const updatedAtMs = Number(raw.updated_at || 0);
+
+  return {
+    entitlementId: String(raw.entitlement_id || "").trim(),
+    status: normalizeEntitlementStatus(raw.status),
+    plan: String(raw.plan || "driftpass"),
+    scope: String(raw.scope || "all_pools"),
+    expiresAt: Number.isFinite(expiresAt) && expiresAt > 0 ? expiresAt : null,
+    customerId: String(raw.customer_id || "").trim() || null,
+    customerEmail: String(raw.customer_email || "").trim().toLowerCase() || null,
+    checkoutSessionId: String(raw.checkout_session_id || "").trim() || null,
+    subscriptionId: String(raw.subscription_id || "").trim() || null,
+    sourceEventType: String(raw.source_event_type || "").trim() || null,
+    sourceEventId: String(raw.source_event_id || "").trim() || null,
+    lastEventCreatedMs: Number.isFinite(lastEventCreatedMs) ? lastEventCreatedMs : 0,
+    updatedAtMs: Number.isFinite(updatedAtMs) ? updatedAtMs : 0,
+    updatedReason: String(raw.updated_reason || "").trim() || null,
+  };
+}
+
+async function readEntitlement(redis, entitlementId) {
+  if (!redis) return null;
+
+  const normalized = String(entitlementId || "").trim();
+  if (!normalized) return null;
+
+  const raw = await redis.hgetall(`reef:entitlement:${normalized}`);
+  const parsed = parseEntitlementRecord(raw);
+  if (!parsed) return null;
+
+  parsed.entitlementId = parsed.entitlementId || normalized;
+  return parsed;
+}
+
+async function upsertEntitlement(redis, input) {
+  if (!redis) {
+    throw new Error("entitlement_store_unavailable");
+  }
+
+  const entitlementId = String(input?.entitlementId || "").trim();
+  if (!entitlementId) {
+    throw new Error("missing_entitlement_id");
+  }
+
+  const existing = await readEntitlement(redis, entitlementId);
+  const eventCreatedMs = Number(input?.eventCreatedMs || Date.now());
+  const safeEventCreatedMs = Number.isFinite(eventCreatedMs) ? eventCreatedMs : Date.now();
+
+  if (existing && existing.lastEventCreatedMs > 0 && safeEventCreatedMs < existing.lastEventCreatedMs) {
+    return {
+      applied: false,
+      stale: true,
+      entitlement: existing,
+    };
+  }
+
+  const status = normalizeEntitlementStatus(input?.status || existing?.status || ENTITLEMENT_STATUS.inactive);
+  const plan = String(input?.plan || existing?.plan || "driftpass");
+  const scope = String(input?.scope || existing?.scope || "all_pools");
+  const expiresAtRaw = Number(input?.expiresAt || existing?.expiresAt || 0);
+  const expiresAt = Number.isFinite(expiresAtRaw) && expiresAtRaw > 0 ? expiresAtRaw : null;
+
+  const customerId = String(input?.customerId || existing?.customerId || "").trim() || null;
+  const customerEmail = String(input?.customerEmail || existing?.customerEmail || "").trim().toLowerCase() || null;
+  const checkoutSessionId = String(input?.checkoutSessionId || existing?.checkoutSessionId || "").trim() || null;
+  const subscriptionId = String(input?.subscriptionId || existing?.subscriptionId || "").trim() || null;
+  const sourceEventType = String(input?.sourceEventType || existing?.sourceEventType || "").trim() || null;
+  const sourceEventId = String(input?.sourceEventId || existing?.sourceEventId || "").trim() || null;
+  const updatedReason = String(input?.updatedReason || "").trim() || null;
+
+  const updatedAtMs = Date.now();
+
+  await redis.hset(`reef:entitlement:${entitlementId}`, {
+    entitlement_id: entitlementId,
+    status,
+    plan,
+    scope,
+    expires_at: expiresAt ? String(expiresAt) : "",
+    customer_id: customerId || "",
+    customer_email: customerEmail || "",
+    checkout_session_id: checkoutSessionId || "",
+    subscription_id: subscriptionId || "",
+    source_event_type: sourceEventType || "",
+    source_event_id: sourceEventId || "",
+    last_event_created: String(safeEventCreatedMs),
+    updated_at: String(updatedAtMs),
+    updated_reason: updatedReason || "",
+  });
+
+  if (checkoutSessionId) {
+    await redis.set(`reef:entitlement:index:checkout:${checkoutSessionId}`, entitlementId);
+  }
+
+  if (subscriptionId) {
+    await redis.set(`reef:entitlement:index:subscription:${subscriptionId}`, entitlementId);
+  }
+
+  if (customerId) {
+    await redis.set(`reef:entitlement:index:customer:${customerId}`, entitlementId);
+  }
+
+  if (customerEmail) {
+    await redis.set(`reef:entitlement:index:email:${customerEmail}`, entitlementId);
+  }
+
+  const entitlement = await readEntitlement(redis, entitlementId);
+
+  return {
+    applied: true,
+    stale: false,
+    entitlement,
+  };
+}
+
+async function resolveEntitlementFromEvent(event, redis) {
+  const signedPass = readPassFromEvent(event);
+  if (!signedPass.allowed) {
+    return signedPass;
+  }
+
+  if (!redis) {
+    return {
+      allowed: false,
+      reason: "entitlement_store_unavailable",
+      payload: signedPass.payload,
+    };
+  }
+
+  const entitlementId = String(signedPass.payload?.eid || signedPass.payload?.pid || "").trim();
+  if (!entitlementId) {
+    return {
+      allowed: false,
+      reason: "invalid_token",
+      payload: signedPass.payload,
+    };
+  }
+
+  let entitlement;
+  try {
+    entitlement = await readEntitlement(redis, entitlementId);
+  } catch (error) {
+    console.error("resolve entitlement read failed", {
+      entitlementId,
+      message: error?.message || String(error),
+    });
+
+    return {
+      allowed: false,
+      reason: "entitlement_store_unavailable",
+      payload: signedPass.payload,
+    };
+  }
+
+  if (!entitlement) {
+    return {
+      allowed: false,
+      reason: "entitlement_not_found",
+      payload: signedPass.payload,
+    };
+  }
+
+  if (entitlement.status === ENTITLEMENT_STATUS.past_due) {
+    return {
+      allowed: false,
+      reason: "entitlement_past_due",
+      payload: entitlement,
+    };
+  }
+
+  if (entitlement.status !== ENTITLEMENT_STATUS.active) {
+    return {
+      allowed: false,
+      reason: "entitlement_inactive",
+      payload: entitlement,
+    };
+  }
+
+  if (entitlement.expiresAt && Date.now() > entitlement.expiresAt) {
+    try {
+      await upsertEntitlement(redis, {
+        entitlementId,
+        status: ENTITLEMENT_STATUS.inactive,
+        plan: entitlement.plan,
+        scope: entitlement.scope,
+        expiresAt: entitlement.expiresAt,
+        customerId: entitlement.customerId,
+        customerEmail: entitlement.customerEmail,
+        checkoutSessionId: entitlement.checkoutSessionId,
+        subscriptionId: entitlement.subscriptionId,
+        sourceEventType: "runtime.expiry",
+        sourceEventId: `runtime:${Date.now()}`,
+        eventCreatedMs: Date.now(),
+        updatedReason: "expired",
+      });
+    } catch (error) {
+      console.error("resolve entitlement expiry update failed", {
+        entitlementId,
+        message: error?.message || String(error),
+      });
+    }
+
+    return {
+      allowed: false,
+      reason: "expired",
+      payload: entitlement,
+    };
+  }
+
+  return {
+    allowed: true,
+    reason: "ok",
+    payload: {
+      ...entitlement,
+      exp: entitlement.expiresAt,
+      scope: entitlement.scope,
+      plan: entitlement.plan,
+      eid: entitlement.entitlementId,
+    },
+  };
 }
 
 async function recordActivity(redis, activity) {
@@ -325,6 +595,8 @@ async function getReefStatus(redis) {
   const now = Date.now();
 
   if (!redis) {
+    const redisConfig = getRedisRuntimeConfig();
+
     return {
       mode: "degraded",
       source: "no_redis",
@@ -351,13 +623,12 @@ async function getReefStatus(redis) {
       copy_state:
         "Telemetry channel is temporarily limited. Reef surfaces remain available while live counts recover.",
       traffic_band: "limited",
-      // Backward-compatible keys
       agents_inside: 0,
       current_drift: "Quiet Depth",
       requests_queue: 0,
       degraded: true,
       reason: "telemetry_limited",
-      reason_code: "telemetry_limited",
+      reason_code: redisConfig.errors.join(",") || "telemetry_limited",
     };
   }
 
@@ -428,7 +699,6 @@ async function getReefStatus(redis) {
     pools,
     traffic_band: trafficBand,
     copy_state: getReefCopyByTrafficBand(trafficBand),
-    // Backward-compatible keys
     agents_inside: Number(activeAgentsNow || 0),
     current_drift: getPoolAura(activeAgents5m),
     requests_queue: 0,
@@ -437,9 +707,12 @@ async function getReefStatus(redis) {
 }
 
 module.exports = {
+  ENTITLEMENT_STATUS,
   KNOWN_POOLS,
   WINDOWS,
+  buildPassCookie,
   canAccessPool,
+  clearPassCookie,
   getPoolSnapshot,
   getReefStatus,
   getRedis,
@@ -447,7 +720,10 @@ module.exports = {
   json,
   normalizePoolId,
   parseJsonBody,
+  readEntitlement,
   readPassFromEvent,
   recordActivity,
+  resolveEntitlementFromEvent,
   signPassToken,
+  upsertEntitlement,
 };

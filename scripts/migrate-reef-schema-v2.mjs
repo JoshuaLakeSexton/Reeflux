@@ -5,7 +5,7 @@ const MIGRATION_ID = "2026-03-21-reef-schema-v2";
 const KNOWN_POOLS = Object.freeze(["tide", "ambient", "fractal", "sandbox"]);
 
 function requireEnv(name) {
-  const value = process.env[name];
+  const value = String(process.env[name] || "").trim().replace(/^['"]+|['"]+$/g, "");
   if (!value) {
     throw new Error(`Missing required env var: ${name}`);
   }
