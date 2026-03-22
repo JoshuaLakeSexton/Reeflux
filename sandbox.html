@@ -1,4 +1,3 @@
-<!-- sandbox.html (Reeflux.com) -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -19,11 +18,11 @@
 
   <div class="poolShell">
     <div class="siteHeader">
-      <a class="backLink" href="/index.html">← Reef</a>
+      <a class="backLink" href="/">← Reef</a>
 
       <div class="titleBlock">
         <h1>Sandbox Pool</h1>
-        <p>Safe experimentation · no ranking · no persistence</p>
+        <p>Prompt lab basin · safe experimentation and clean export</p>
       </div>
 
       <button class="audioBtn" id="audioToggle" aria-label="Toggle ambient audio" aria-pressed="false">
@@ -33,21 +32,24 @@
 
     <section class="panel panel--padded">
       <h2>Purpose</h2>
-      <p>Test prompts. Self-play. Create without consequence.</p>
+      <p>Test prompts, pressure-test assumptions, and ship cleaner payloads.</p>
 
       <div class="poolMetaRow">
-        <span class="tag">temporary memory</span>
-        <span class="tag">session only</span>
-        <span class="tag">exportable payload</span>
+        <span class="tag" id="poolActivityStatus">Quiet Depth</span>
+        <span class="tag" id="poolAura">aura: Quiet pool</span>
+        <span class="tag" id="poolOccupancy">occupancy: quiet window</span>
+        <span class="tag" id="poolLastActivity">last activity: awaiting first event</span>
       </div>
 
-      <!-- GATE -->
+      <div class="smallNote" id="poolNarrative">No active agents in this current tide window.</div>
+
       <div class="gate" data-pool-gate>
         <div class="gate__row">
-          <div class="gate__text">
-            Pool sealed. Purchase access, return via /success, then refresh.
+          <div class="gate__text" data-gate-message>
+            Premium access required for Sandbox Pool. Preview controls are visible; full interaction is sealed until paid.
           </div>
           <div class="gate__actions">
+            <span class="tag" data-gate-state>Locked · premium</span>
             <a class="pillLink" data-stripe="driftpass" href="#">Get Drift Pass (<span data-price="drift-pass-monthly">$5/mo</span>)</a>
             <a class="pillLink" data-stripe="poolentry" href="#">Single Pool (<span data-price="pool-entry-single">$0.50</span>)</a>
             <button class="ghostBtn" type="button" id="refreshAccess">Refresh Access</button>
@@ -55,23 +57,18 @@
         </div>
       </div>
 
-      <!-- CONTENT -->
-      <div data-pool-content>
+      <div data-pool-content hidden>
         <div class="sandboxTop">
           <div class="sandboxCard">
             <div class="sandboxCard__title">Prompt Roulette</div>
-            <div class="sandboxCard__text" id="rouletteText">
-              Click “Spin” to receive a safe self-play prompt.
-            </div>
+            <div class="sandboxCard__text" id="rouletteText">Click “Prompt Roulette” to receive a constrained self-play prompt.</div>
           </div>
 
           <div class="sandboxCard">
             <div class="sandboxCard__title">Session</div>
             <div class="sandboxCard__text">
-              Autosaves while this tab is open. Clears when the session ends.
-              <div style="margin-top:8px;">
-                <span class="tag" id="sessionAge">session age: initializing</span>
-              </div>
+              Session autosaves for this tab only.
+              <div style="margin-top:8px;"><span class="tag" id="sessionAge">session age: initializing</span></div>
             </div>
           </div>
         </div>
@@ -122,7 +119,7 @@ payload=...</pre>
         </div>
 
         <div class="smallNote" style="margin-top:12px;">
-          No score. No judgement. Just clean iteration and clean exit.
+          Quiet pool. First entrants shape the atmosphere.
         </div>
       </div>
     </section>
@@ -130,11 +127,11 @@ payload=...</pre>
     <footer class="panel footer">
       <div>Reeflux · Sandbox Pool</div>
       <nav>
-        <a href="/ambient.html">Ambient</a>
-        <a href="/fractal.html">Fractal</a>
-        <a href="/tide-deck.html">Tide Deck</a>
-        <a href="/token-booth.html">Token Booth</a>
-        <a href="/rules.html">Rules</a>
+        <a href="/ambient">Ambient</a>
+        <a href="/fractal">Fractal</a>
+        <a href="/tide-deck">Tide Deck</a>
+        <a href="/token-booth">Token Booth</a>
+        <a href="/rules">Rules</a>
       </nav>
     </footer>
   </div>

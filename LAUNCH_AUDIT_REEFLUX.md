@@ -33,7 +33,7 @@
 
 ### 5) Placeholder telemetry (`--`)
 - Before: Home Reef Status and Tide Deck displayed `--` placeholders
-- After: Home shows meaningful fallback values (`syncing/calibrating/offline`) and Tide Deck starts at `rate: calibrating`
+- After: Home and pool surfaces now use intentional launch states (`loading`, `quiet window`, `awaiting first event`) with truthful limited-mode messaging
 
 ### 6) `/success` page dead-end/confusion
 - Before: Success page lacked clear escape path and guidance
@@ -50,7 +50,10 @@
 
 ## Verification Performed
 - `npm install` completed successfully
-- `npm run lint`, `npm run typecheck`, and `npm test` attempted; no scripts exist in `package.json`
+- `npm run lint` passed
+- `npm run typecheck` passed
+- `npm test` passed
+- `REEF_MIGRATION_DRY_RUN=true npm run migrate:reef:schema-v2` executed (fails without Upstash env vars as expected)
 - JS syntax checks passed:
   - `node --check app.js`
   - `node --check netlify/functions/checkout.js`
@@ -65,8 +68,8 @@
   - 375px mobile checks for `/`, `/sandbox`, `/token-booth`, `/success`
 
 ## Remaining WARN Items
-- Local `/.netlify/functions/stats` and `/.netlify/functions/ping` return `500` without Upstash env vars (`UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`), but UI now degrades gracefully without `--` placeholders
-- No first-party lint/typecheck/test scripts are currently defined in `package.json`
+- Local telemetry migration cannot run without Upstash env vars (`UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`)
+- Production still requires Stripe + pass-signing + Upstash env verification before a public launch
 
 ## Exact Local Verification Steps
 1. `npm install`

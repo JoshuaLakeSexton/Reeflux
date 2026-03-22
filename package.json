@@ -1,8 +1,20 @@
 {
   "name": "reeflux",
   "private": true,
+  "scripts": {
+    "lint": "npm run lint:js && npm run lint:links",
+    "lint:js": "node scripts/lint-js.mjs",
+    "lint:links": "node scripts/check-links.mjs",
+    "typecheck": "node scripts/typecheck.mjs",
+    "test": "node --test tests/reef-functions.test.mjs",
+    "migrate:reef:schema-v2": "node scripts/migrate-reef-schema-v2.mjs",
+    "migrate:entitlement:schema-v1": "node scripts/migrate-entitlement-schema-v1.mjs"
+  },
   "dependencies": {
     "@upstash/redis": "^1.36.2",
     "stripe": "^14.0.0"
+  },
+  "devDependencies": {
+    "playwright": "^1.58.2"
   }
 }

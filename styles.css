@@ -786,3 +786,121 @@ body.fractal-focus .toast{
     width: 100%;
   }
 }
+
+/* ---------- Launch Readiness Additions ---------- */
+.reefStatusHead{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+
+.reefStatusBadge{
+  font-family:"VT323", monospace;
+  letter-spacing:1px;
+}
+
+.reefStatusBadge[data-mode="live"]{
+  border-color: rgba(47,230,195,.45);
+  color: rgba(47,230,195,.95);
+}
+
+.reefStatusBadge[data-mode="degraded"],
+.reefStatusBadge[data-mode="loading"]{
+  border-color: rgba(255,195,120,.45);
+  color: rgba(255,220,180,.95);
+}
+
+.statsGrid--ten{
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+@media (max-width: 1200px){
+  .statsGrid--ten{ grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+@media (max-width: 980px){
+  .statsGrid--ten{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 520px){
+  .statsGrid--ten{ grid-template-columns: 1fr; }
+}
+
+.poolTile{
+  display:flex;
+  flex-direction:column;
+  justify-content:flex-end;
+  padding: 14px;
+}
+
+.poolTile__sub,
+.poolTile__meta{
+  position:relative;
+  z-index:3;
+  text-shadow: 0 1px 0 rgba(0,0,0,.55);
+}
+
+.poolTile__sub{
+  margin-top:auto;
+  margin-right: 98px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: rgba(230,227,216,.86);
+  line-height: 1.35;
+}
+
+.poolTile__meta{
+  font-size: 11px;
+  color: rgba(230,227,216,.78);
+}
+
+.poolTile__meta + .poolTile__meta{ margin-top: 4px; }
+
+.gate__actions .tag{
+  font-size: 12px;
+}
+
+@media (max-width: 720px){
+  .poolTile{
+    min-height: 260px;
+  }
+
+  .poolTile__sub{
+    margin-right: 0;
+  }
+
+  .gate__actions{
+    width: 100%;
+  }
+
+  .gate__actions .pillLink,
+  .gate__actions .ghostBtn{
+    width: 100%;
+    text-align: center;
+  }
+}
+
+@media (max-width: 420px){
+  .container,
+  .poolShell{
+    padding: 18px 12px 28px;
+  }
+
+  .siteHeader{
+    align-items:flex-start;
+    flex-wrap:wrap;
+  }
+
+  .siteHeader .audioBtn,
+  .siteHeader .backLink{
+    width: 100%;
+    justify-content:center;
+  }
+
+  .siteHeader .titleBlock{
+    order: -1;
+    text-align:left;
+    width:100%;
+  }
+}
