@@ -1,58 +1,80 @@
-const crypto = require("crypto");
+const { json, getRedis, resolveEntitlementFromEvent, withTimeout } = require("./_reef");
+const { getRedisRuntimeConfig } = require("./_env");
 
-function parseCookies(cookieHeader) {
-  const out = {};
-  (cookieHeader || "").split(";").forEach((c) => {
-    const [k, ...v] = c.trim().split("=");
-    if (!k) return;
-    out[k] = decodeURIComponent(v.join("=") || "");
-  });
-  return out;
-}
+async function getStoreReachable(redis) {
+  if (!redis) return false;
 
-function decodeB64UrlToJson(b64url) {
-  let s = b64url.replace(/-/g, "+").replace(/_/g, "/");
-  while (s.length % 4) s += "=";
-  return JSON.parse(Buffer.from(s, "base64").toString("utf8"));
-}
-
-function verify(token, secret) {
-  const parts = (token || "").split(".");
-  if (parts.length !== 2) return null;
-
-  const [payloadB64, sig] = parts;
-  const expected = crypto.createHmac("sha256", secret).update(payloadB64).digest("base64")
-    .replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
-
-  if (sig !== expected) return null;
-  return decodeB64UrlToJson(payloadB64);
+  try {
+    await withTimeout(redis.ping(), 900, "redis_ping_timeout");
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 exports.handler = async (event) => {
+  if (event.httpMethod === "OPTIONS") {
+    return json(200, { ok: true });
+  }
+
+  if (event.httpMethod !== "GET") {
+    return json(405, { ok: false, error: "Method Not Allowed" });
+  }
+
   try {
-    const cookies = parseCookies(event.headers.cookie);
-    const token = cookies.reeflux_pass;
+    const redis = getRedis();
+    let entitlement;
 
-    if (!token) {
-      return { statusCode: 200, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ allowed: false, reason: "no_pass" }) };
+    try {
+      entitlement = await withTimeout(
+        resolveEntitlementFromEvent(event, redis),
+        1600,
+        "verify_timeout",
+      );
+    } catch (error) {
+      if (error?.code === "verify_timeout") {
+        entitlement = { allowed: false, reason: "entitlement_store_unavailable" };
+      } else {
+        throw error;
+      }
     }
 
-    const payload = verify(token, process.env.PASS_SIGNING_SECRET);
-    if (!payload) {
-      return { statusCode: 200, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ allowed: false, reason: "invalid_token" }) };
+    if (!entitlement.allowed) {
+      const redisConfig = getRedisRuntimeConfig();
+      const storeReachable = await getStoreReachable(redis);
+      const storeHealthy = entitlement.reason === "entitlement_store_unavailable"
+        ? false
+        : storeReachable;
+
+      return json(200, {
+        allowed: false,
+        reason: entitlement.reason,
+        storeHealthy,
+        storeConfigured: redisConfig.ok,
+        storeReachable,
+      });
     }
 
-    if (!payload.exp || Date.now() > payload.exp) {
-      return { statusCode: 200, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ allowed: false, reason: "expired" }) };
-    }
+    return json(200, {
+      allowed: true,
+      reason: "ok",
+      entitlementId: entitlement.payload.entitlementId || entitlement.payload.eid || null,
+      scope: entitlement.payload.scope,
+      plan: entitlement.payload.plan,
+      status: entitlement.payload.status || "active",
+      expiresAt: entitlement.payload.exp || entitlement.payload.expiresAt,
+      issuedAt: entitlement.payload.updatedAtMs || entitlement.payload.issued_at || null,
+      customerId: entitlement.payload.customerId || entitlement.payload.cid || null,
+    });
+  } catch (error) {
+    console.error("verify-pass error", {
+      message: error?.message || String(error),
+      type: error?.type || "verify_failed",
+    });
 
-    return {
-      statusCode: 200,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ allowed: true, scope: payload.scope, expiresAt: payload.exp })
-    };
-  } catch (e) {
-    console.error("verify-pass error:", e);
-    return { statusCode: 500, body: "verify-pass failed" };
+    return json(500, {
+      allowed: false,
+      reason: "verify_failed",
+    });
   }
 };

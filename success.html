@@ -1,4 +1,3 @@
-<!-- success.html (Reeflux.com) -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -19,10 +18,10 @@
 
   <div class="poolShell">
     <div class="siteHeader">
-      <a class="backLink" href="/index.html">← Reef</a>
+      <a class="backLink" href="/">← Reef</a>
       <div class="titleBlock">
         <h1>Access Ready</h1>
-        <p>reefpass=true · this device is unlocked</p>
+        <p>Access set on this device.</p>
       </div>
       <button class="audioBtn" id="audioToggle" aria-label="Toggle ambient audio" aria-pressed="false">
         Play Audio
@@ -32,12 +31,13 @@
     <section class="panel panel--padded">
       <h2>Access set on this device.</h2>
       <p>
-        Your pass is active in local storage. Enter Reef, open any pool, or refresh access if you just completed checkout.
+        Server entitlement is verified here. Premium access unlocks only after server confirmation.
       </p>
 
       <div class="poolMetaRow">
-        <span class="tag" id="passState">reefpass: pending</span>
-        <span class="tag" id="passTime">time: checking</span>
+        <span class="tag" id="passState">reefpass: loading</span>
+        <span class="tag" id="passTime">time: loading</span>
+        <span class="tag" id="serverPassState">server entitlement: loading</span>
       </div>
 
       <div class="pillRow" style="margin-top:14px;">
@@ -47,20 +47,14 @@
       </div>
 
       <div class="pillRow" style="margin-top:12px;">
-        <a class="pillLink" href="/ambient.html">Ambient</a>
-        <a class="pillLink" href="/fractal.html">Fractal</a>
-        <a class="pillLink" href="/sandbox.html">Sandbox</a>
-        <a class="pillLink" href="/tide-deck.html">Tide Deck</a>
+        <a class="pillLink" href="/ambient">Ambient</a>
+        <a class="pillLink" href="/fractal">Fractal</a>
+        <a class="pillLink" href="/sandbox">Sandbox</a>
+        <a class="pillLink" href="/tide-deck">Tide Deck</a>
       </div>
 
-      <div class="smallNote" style="margin-top:12px;">
+      <div class="smallNote" id="successStatusNote" style="margin-top:12px;">
         If you aren’t redirected, click Enter Reef.
-        <br />
-        This is a soft gate: access is stored in your browser and can be refreshed here.
-      </div>
-
-      <div class="pillRow" style="margin-top:12px;">
-        <button class="ghostBtn" id="clearPass">Clear Local Pass</button>
       </div>
     </section>
 
@@ -69,77 +63,12 @@
       <nav>
         <a href="/">Home</a>
         <a href="/token-booth">Token Booth</a>
-        <a href="/rules.html">Rules</a>
+        <a href="/rules">Rules</a>
       </nav>
     </footer>
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-
-  <script>
-    // --- Reeflux soft-gate: set reefpass=true ---
-    (function () {
-      const KEY = "reefpass";
-      const TS  = "reefpass_set_at";
-
-      function setAccess() {
-        try {
-          localStorage.setItem(KEY, "true");
-          localStorage.setItem(TS, new Date().toISOString());
-        } catch (e) {
-          // If storage is blocked, we can still show the user what happened
-        }
-      }
-
-      const passState = document.getElementById("passState");
-      const passTime = document.getElementById("passTime");
-
-      let state = "unknown";
-      let time = "pending";
-
-      function syncTags() {
-        try {
-          state = localStorage.getItem(KEY) || "false";
-          time = localStorage.getItem(TS) || "pending";
-        } catch (e) {}
-
-        if (passState) passState.textContent = `reefpass: ${state}`;
-        if (passTime) passTime.textContent = `time: ${time}`;
-      }
-
-      setAccess();
-      syncTags();
-
-      const clearBtn = document.getElementById("clearPass");
-      if (clearBtn) {
-        clearBtn.addEventListener("click", () => {
-          try {
-            localStorage.removeItem(KEY);
-            localStorage.removeItem(TS);
-          } catch (e) {}
-          if (passState) passState.textContent = "reefpass: false";
-          if (passTime) passTime.textContent = "time: cleared";
-        });
-      }
-
-      const refreshBtn = document.getElementById("successRefreshAccess");
-      if (refreshBtn) {
-        refreshBtn.addEventListener("click", () => {
-          setAccess();
-          syncTags();
-          if (typeof window.__reefluxRecheckGate === "function") {
-            window.__reefluxRecheckGate();
-          }
-        });
-      }
-
-      window.setTimeout(() => {
-        window.location.assign("/");
-      }, 2600);
-    })();
-  </script>
-
-  <!-- Keep shared behaviors (audio/toast) -->
   <script src="/app.js" defer></script>
 </body>
 </html>
