@@ -6,6 +6,7 @@ const {
   upsertEntitlement,
   getRedis,
   ENTITLEMENT_STATUS,
+  withTimeout,
 } = require("./_reef");
 const { readEnv, validateRequiredEnv } = require("./_env");
 
@@ -71,9 +72,11 @@ exports.handler = async (event) => {
       return pendingRedirect("missing_session_id");
     }
 
-    const session = await stripe.checkout.sessions.retrieve(sessionId, {
-      expand: ["customer"],
-    });
+    const session = await withTimeout(
+      stripe.checkout.sessions.retrieve(sessionId, { expand: ["customer"] }),
+      4000,
+      "stripe_retrieve_timeout",
+    );
 
     if (!session || session.payment_status !== "paid") {
       return pendingRedirect("payment_not_completed");
@@ -106,7 +109,7 @@ exports.handler = async (event) => {
       session.customer_details?.email || session.customer_email || session.customer?.email || "",
     ).trim().toLowerCase() || null;
 
-    const entitlementResult = await upsertEntitlement(redis, {
+    const entitlementResult = await withTimeout(upsertEntitlement(redis, {
       entitlementId,
       status: ENTITLEMENT_STATUS.active,
       plan,
@@ -120,7 +123,7 @@ exports.handler = async (event) => {
       sourceEventId: session.id,
       eventCreatedMs: Number(session.created || Math.floor(now / 1000)) * 1000,
       updatedReason: "success_callback",
-    });
+    }), 2200, "entitlement_upsert_timeout");
 
     if (!entitlementResult.entitlement) {
       return pendingRedirect("entitlement_write_failed");
@@ -166,6 +169,14 @@ exports.handler = async (event) => {
 
     if (errorType === "StripeAPIError" || errorType === "StripeConnectionError") {
       return pendingRedirect("stripe_unavailable");
+    }
+
+    if (error?.code === "stripe_retrieve_timeout") {
+      return pendingRedirect("stripe_unavailable");
+    }
+
+    if (error?.code === "entitlement_upsert_timeout") {
+      return pendingRedirect("entitlement_store_unavailable");
     }
 
     return pendingRedirect("entitlement_sync_pending");

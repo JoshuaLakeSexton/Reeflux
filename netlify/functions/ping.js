@@ -5,6 +5,7 @@ const {
   normalizePoolId,
   recordActivity,
   resolveEntitlementFromEvent,
+  withTimeout,
 } = require("./_reef");
 
 exports.handler = async (event) => {
@@ -27,16 +28,28 @@ exports.handler = async (event) => {
     }
 
     const redis = getRedis();
-    entitlement = await resolveEntitlementFromEvent(event, redis);
+    try {
+      entitlement = await withTimeout(
+        resolveEntitlementFromEvent(event, redis),
+        1500,
+        "ping_verify_timeout",
+      );
+    } catch (error) {
+      if (error?.code === "ping_verify_timeout") {
+        entitlement = { allowed: false, reason: "entitlement_store_unavailable" };
+      } else {
+        throw error;
+      }
+    }
 
-    const activity = await recordActivity(redis, {
+    const activity = await withTimeout(recordActivity(redis, {
       sessionId,
       actorType: body.actorType,
       actorId: body.actorId,
       poolId: normalizePoolId(body.poolId),
       eventType: body.eventType || "heartbeat",
       authenticated: entitlement.allowed,
-    });
+    }), 1600, "ping_activity_timeout");
 
     return json(200, {
       ok: true,

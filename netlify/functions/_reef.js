@@ -77,6 +77,24 @@ function json(statusCode, data, extraHeaders = {}) {
   };
 }
 
+function withTimeout(promise, timeoutMs, timeoutCode = "operation_timeout") {
+  const ms = Math.max(50, Number(timeoutMs || 0));
+  if (!Number.isFinite(ms)) return promise;
+
+  let timer = null;
+  const timeoutPromise = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      const error = new Error(timeoutCode);
+      error.code = timeoutCode;
+      reject(error);
+    }, ms);
+  });
+
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    if (timer) clearTimeout(timer);
+  });
+}
+
 function parseJsonBody(event) {
   if (!event || typeof event.body !== "string") return {};
 
@@ -726,4 +744,5 @@ module.exports = {
   resolveEntitlementFromEvent,
   signPassToken,
   upsertEntitlement,
+  withTimeout,
 };

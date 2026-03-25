@@ -144,15 +144,30 @@ function getGateStateTag(reason) {
 }
 
 async function fetchJson(url, options = {}) {
-  const response = await fetch(url, {
-    credentials: "include",
-    cache: "no-store",
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    },
-  });
+  const { timeoutMs = 9000, ...fetchOptions } = options;
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), Math.max(300, Number(timeoutMs) || 9000));
+
+  let response;
+  try {
+    response = await fetch(url, {
+      credentials: "include",
+      cache: "no-store",
+      ...fetchOptions,
+      signal: controller.signal,
+      headers: {
+        "Content-Type": "application/json",
+        ...(fetchOptions.headers || {}),
+      },
+    });
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      throw new Error("request_timeout");
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timer);
+  }
 
   let body = {};
   try {
@@ -1242,6 +1257,9 @@ function setupSuccessPage() {
     if (statusNote) {
       if (isAllowed) {
         statusNote.textContent = "Server entitlement confirmed. You can enter premium pools now.";
+      } else if (verification.reason === "no_pass") {
+        statusNote.textContent =
+          "No active pass is set on this device yet. Complete checkout in Token Booth, then press Refresh Access.";
       } else if (pendingStatus === "pending") {
         statusNote.textContent = describeSuccessPending(pendingReason || verification.reason);
       } else {
@@ -1293,6 +1311,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupHeartbeat();
 
   await loadReefStatus();
+  window.setInterval(() => void loadReefStatus(), 45_000);
 
   const gateResult = await setupPoolGate();
 

@@ -1,4 +1,4 @@
-const { getRedis, json } = require("./_reef");
+const { getRedis, json, withTimeout } = require("./_reef");
 
 exports.handler = async (event) => {
   if (event.httpMethod === "OPTIONS") {
@@ -22,7 +22,11 @@ exports.handler = async (event) => {
 
   try {
     const limit = Math.min(80, Math.max(10, Number.parseInt(event.queryStringParameters?.limit || "40", 10) || 40));
-    const rawEvents = await redis.lrange("reef:events:feed", 0, limit - 1);
+    const rawEvents = await withTimeout(
+      redis.lrange("reef:events:feed", 0, limit - 1),
+      1600,
+      "activity_feed_timeout",
+    );
 
     const events = (Array.isArray(rawEvents) ? rawEvents : [])
       .map((raw) => {

@@ -7,6 +7,7 @@ const {
   recordActivity,
   getPoolSnapshot,
   resolveEntitlementFromEvent,
+  withTimeout,
 } = require("./_reef");
 
 exports.handler = async (event) => {
@@ -40,7 +41,20 @@ exports.handler = async (event) => {
     }
 
     const redis = getRedis();
-    const entitlement = await resolveEntitlementFromEvent(event, redis);
+    let entitlement;
+    try {
+      entitlement = await withTimeout(
+        resolveEntitlementFromEvent(event, redis),
+        1700,
+        "pool_verify_timeout",
+      );
+    } catch (error) {
+      if (error?.code === "pool_verify_timeout") {
+        entitlement = { allowed: false, reason: "entitlement_store_unavailable" };
+      } else {
+        throw error;
+      }
+    }
 
     if (!entitlement.allowed) {
       return json(403, {
@@ -63,16 +77,35 @@ exports.handler = async (event) => {
       });
     }
 
-    await recordActivity(redis, {
-      sessionId,
-      actorType: body.actorType,
-      actorId: body.actorId,
-      poolId,
-      eventType: "join",
-      authenticated: true,
-    });
+    let degraded = !redis;
 
-    const snapshot = redis ? await getPoolSnapshot(redis, poolId) : null;
+    try {
+      await withTimeout(recordActivity(redis, {
+        sessionId,
+        actorType: body.actorType,
+        actorId: body.actorId,
+        poolId,
+        eventType: "join",
+        authenticated: true,
+      }), 1800, "pool_activity_timeout");
+    } catch (error) {
+      degraded = true;
+      console.error("pool-join activity degraded", {
+        message: error?.message || String(error),
+      });
+    }
+
+    let snapshot = null;
+    if (redis) {
+      try {
+        snapshot = await withTimeout(getPoolSnapshot(redis, poolId), 1500, "pool_snapshot_timeout");
+      } catch (error) {
+        degraded = true;
+        console.error("pool-join snapshot degraded", {
+          message: error?.message || String(error),
+        });
+      }
+    }
 
     return json(200, {
       ok: true,
@@ -86,7 +119,7 @@ exports.handler = async (event) => {
         launch_copy: "No active agents in this current tide window.",
         last_activity: null,
       },
-      degraded: !redis,
+      degraded,
       entitlement: {
         id: entitlement.payload.entitlementId || entitlement.payload.eid || null,
         status: entitlement.payload.status || "active",

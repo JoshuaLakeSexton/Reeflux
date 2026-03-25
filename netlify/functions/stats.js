@@ -1,4 +1,4 @@
-const { getRedis, getReefStatus, json } = require("./_reef");
+const { getRedis, getReefStatus, json, withTimeout } = require("./_reef");
 
 exports.handler = async (event) => {
   if (event.httpMethod === "OPTIONS") {
@@ -11,7 +11,7 @@ exports.handler = async (event) => {
 
   try {
     const redis = getRedis();
-    const status = await getReefStatus(redis);
+    const status = await withTimeout(getReefStatus(redis), 1800, "stats_timeout");
     return json(200, status);
   } catch (error) {
     console.error("stats error", error);
